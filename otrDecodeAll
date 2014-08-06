@@ -61,6 +61,15 @@ function funcPerformChecks {
 	if [ $exet -eq 1 ]; then
 		exit 1
 	fi
+
+	if [ $forceRun -eq 0 ] && [ -n "$xbmcUrl" ]; then	# If we can and have to check whether XBMC is playing something
+		playerID="$(curl -s $xbmcUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
+		if [ -n "$playerID" ]; then
+			funcLog 3 "XBMC is running, exiting now"
+			funcUnlock
+			exit
+		fi
+	fi
 }
 
 
@@ -113,7 +122,7 @@ function funcParam {
 function funcHelp {
 	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -v -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
 	echo "-> FORCE"
-	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile. This may result into decoding some files multiple times."
+	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile and XBMC. This may result into decoding some files multiple times (perhaps corrupting them) and making XBMC less smooth."
 	echo "-> REMOVE"
 	echo -e "	\033[36m-r\033[37m Make this script delete the original otrkey files."
 	echo "-> KEEP"
