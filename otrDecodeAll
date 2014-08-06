@@ -6,7 +6,7 @@
 
 remove=1;				# 1 => Delete when torrent deleted, 2 => Delete always, 0 => Delete never
 forceRun=0;				# Skip lock file test
-validate="";			# unused
+validate="-q";			# unused with pyropeters otrtool
 logMsgTypes=("      " "error" "warn" "info" "debug" "debugV")
 logMsgColor=("\033[37m" "\033[31m" "\033[33m" "\033[37m" "\033[37m" "\033[37m")
 logLevel=0
@@ -66,7 +66,7 @@ function funcPerformChecks {
 
 # Parse the parameters
 function funcParam {
-	while getopts "frkqh?e:p:i:o:d:t:" optval; do
+	while getopts "frkvh?e:p:i:o:d:t:" optval; do
 		case $optval in
 			"f")
 				funcLog 4 "Set forceRun = 1"
@@ -77,9 +77,9 @@ function funcParam {
 			"k")
 				funcLog 4 "Set remove = 0 (never)"
 				remove=0;;				# keep the otrkey
-			"q")
-				funcLog 4 "Set validate = -q (never)"
-				validate="-q";;			# validate the output file after decoding. Not needed when downloaded via torrent
+			"v")
+				funcLog 4 "Set validate = '' (yes)"
+				validate="";;			# validate the output file after decoding. Not needed when downloaded via torrent
 			"e")
 				funcLog 4 "Set user = $OPTARG"
 				user=$OPTARG;;			# different user
@@ -111,7 +111,7 @@ function funcParam {
 
 # Print some help text and explain parameters
 function funcHelp {
-	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -q -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
+	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -v -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
 	echo "-> FORCE"
 	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile. This may result into decoding some files multiple times."
 	echo "-> REMOVE"
@@ -119,7 +119,7 @@ function funcHelp {
 	echo "-> KEEP"
 	echo -e "	\033[36m-k\033[37m Make this script keep the original otrkey files. If not given, the otrkey will be kept after decoding and when torrent file is not found."
 	echo "-> NO VALIDATE"
-	echo -e "	\033[36m-q\033[37m Make otrdecoder not validating the output file. This should be ok when you downloaded it via torrent."
+	echo -e "	\033[36m-v\033[37m Make otrdecoder validate the output file. This should not be neccessarry when you downloaded it via torrent."
 	echo "-> USER"
 	echo -e "	\033[36m-e\033[37m Specify the OTR email address if you do not want to use the default."
 	echo "-> PASSWORD"
