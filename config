@@ -1,0 +1,30 @@
+##########
+# Config #
+##########
+
+user=""															# OTR email address
+pass=""															# OTR password
+
+delugeDir="/etc/deluged"										# Config dir of DelugeD
+inDir="/Multimedia/Video/.Downloaded"							# Dir with .otrkeys
+uncutDir="/Multimedia/Video/.Uncut"								# Dir with uncut videos (output of decoder)
+cutDir="/Multimedia/Video/.Uncut"								# Dir with cut videos (output of cutter)
+outDir="/Multimedia/Video/"										# Final dir with videos
+
+torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb)
+
+cmdDecode="/usr/bin/otrtool"									# path to otrkey decoder
+cmdDecodeArgs="-x -e $user -p $pass -D $uncutDir"				# for peropeters otrdecoder
+#cmdDecode="/home/pi/otr/otr/bin/qemu-x86_64 -L /home/pi/otr/otr /home/pi/otr/otr/bin64/otrdecoder-64 "
+#cmdDecodeArgs="-e $user -p $pass -o "$uncutDir" -i"			# for original otrdecoder
+cmdCut="/home/deluged/multicutmkv.sh"							# path to multicut
+cmdCutArgs=
+cmdSaneRenamix="/home/deluged/saneRenamix.sh"					# path to saneRenamix
+cmdSaneRenamixArgs="-s -f"
+
+logFile="/home/deluged/otrDecodeAll.log"						# path to the log file
+# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
+logLevel=2														#level, which messages shall be written into the log.
+echoLevel=5														#level, which messages shall be written to stdout.
+
+
