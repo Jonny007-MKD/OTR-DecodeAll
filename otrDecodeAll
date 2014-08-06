@@ -32,16 +32,19 @@ function funcLog {
 	fi
 }
 
-function funcPerformChecks {
-	local exet;
-	exet=0
-
+function funcGetConfig {
 	if [ ! -r "$PwD/config" ]; then
 		funcLog 1 "$PwD/config does not exist"
 		exit 1
 	else
 		. "$PwD/config"
+		funcConfigPre
 	fi
+}
+
+function funcPerformChecks {
+	local exet;
+	exet=0
 
 	if ! type "$cmdDecode" >/dev/null 2>&1 ; then
 		funcLog 1 "Please install otrtool"
@@ -103,6 +106,7 @@ function funcParam {
 				echo "No argument value for option $OPTARG";;
 		esac
 	done
+	funcConfigPost
 }
 
 # Print some help text and explain parameters
@@ -351,8 +355,9 @@ function funcMove {
 	success=1
 }
 
-funcPerformChecks
+funcGetConfig
 funcParam "$@"
+funcPerformChecks
 funcLock
 funcProcessFiles
 funcUnlock
