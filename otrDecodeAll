@@ -1,0 +1,358 @@
+#!/bin/bash
+
+##########
+# Script #
+##########
+
+remove=1;				# 1 => Delete when torrent deleted, 2 => Delete always, 0 => Delete never
+forceRun=0;				# Skip lock file test
+validate="";			# unused
+logMsgTypes=("      " "error" "warn" "info" "debug" "debugV")
+logMsgColor=("\033[37m" "\033[31m" "\033[33m" "\033[37m" "\033[37m" "\033[37m")
+logLevel=0
+echoLevel=5
+
+PwD=$(readlink -e $0)	# Get the path to this script
+PwD=$(dirname "$PwD")
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+
+function ctrl_c() {
+	funcUnlock
+	exit
+}
+
+function funcLog {
+	if [ $1 -le $logLevel ]; then
+		echo -e "`date +"%d.%m.%y %T"` ${logMsgTypes[$1]}\t$2" >> $logFile
+	fi
+	if [ $1 -le $echoLevel ]; then
+		echo -e "${logMsgColor[$(($1))]}${logMsgTypes[$1]}:\t$2\033[37m"
+	fi
+}
+
+function funcPerformChecks {
+	local exet;
+	exet=0
+
+	if [ ! -r "$PwD/config" ]; then
+		funcLog 1 "$PwD/config does not exist"
+		exit 1
+	else
+		. "$PwD/config"
+	fi
+
+	if ! type "$cmdDecode" >/dev/null 2>&1 ; then
+		funcLog 1 "Please install otrtool"
+		exet=1
+	fi
+	if ! type "$cmdCut" >/dev/null 2>&1 ; then
+		funcLog 1 "Please check the path to multicutmkv"
+		exet=1
+	fi
+	if ! type "$cmdSaneRenamix" >/dev/null 2>&1 ; then
+		funcLog 1 "Please check the path to SaneRenamix (set to empty if not wanted)"
+		exet=1
+	fi
+	if [ $exet -eq 1 ]; then
+		exit 1
+	fi
+}
+
+
+# Parse the parameters
+function funcParam {
+	while getopts "frkqh?e:p:i:o:d:t:" optval; do
+		case $optval in
+			"f")
+				funcLog 4 "Set forceRun = 1"
+				forceRun=1;;			# ignore lock file
+			"r")
+				funcLog 4 "Set remove = 2 (always)"
+				remove=2;;				# delete the otrkey
+			"k")
+				funcLog 4 "Set remove = 0 (never)"
+				remove=0;;				# keep the otrkey
+			"q")
+				funcLog 4 "Set validate = -q (never)"
+				validate="-q";;			# validate the output file after decoding. Not needed when downloaded via torrent
+			"e")
+				funcLog 4 "Set user = $OPTARG"
+				user=$OPTARG;;			# different user
+			"p")
+				funcLog 4 "Set pass = $OPTARG"
+				pass=$OPTARG;;			# different password
+			"i")
+				funcLog 4 "Set indir = $OPTARG"
+				inDir=$OPTARG;;			# different input dir
+			"o")
+				funcLog 4 "Set outDir = $OPTARG"
+				outDir=$OPTARG;;		# different output dir
+			"d")
+				funcLog 4 "Set uncutDir = $OPTARG"
+				uncutDir=$OPTARG		# different uncut dir
+				cutDir=$OPTARG;;		# different cut dir
+			"c")
+				funcLog 4 "Set delugeDir = $OPTARG"
+				delugeDir=$OPTARG;;		# different deluge dir
+			"h"|"?")
+				funcHelp;				# print help
+				exit;;
+			":")
+				echo "No argument value for option $OPTARG";;
+		esac
+	done
+}
+
+# Print some help text and explain parameters
+function funcHelp {
+	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -q -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
+	echo "-> FORCE"
+	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile. This may result into decoding some files multiple times."
+	echo "-> REMOVE"
+	echo -e "	\033[36m-r\033[37m Make this script delete the original otrkey files."
+	echo "-> KEEP"
+	echo -e "	\033[36m-k\033[37m Make this script keep the original otrkey files. If not given, the otrkey will be kept after decoding and when torrent file is not found."
+	echo "-> NO VALIDATE"
+	echo -e "	\033[36m-q\033[37m Make otrdecoder not validating the output file. This should be ok when you downloaded it via torrent."
+	echo "-> USER"
+	echo -e "	\033[36m-e\033[37m Specify the OTR email address if you do not want to use the default."
+	echo "-> PASSWORD"
+	echo -e "	\033[36m-p\033[37m Specify the OTR password if you do not want to use the default."
+	echo "-> INPUTDIR"
+	echo -e "	\033[36m-i\033[37m Specify the input directory where the *.otrkey files are located."
+	echo "-> DECODEDDIR"
+	echo -e "	\033[36m-d\033[37m Specify the output directory where the decoded file shall be put before cutting."
+	echo "-> UNCUTDIR"
+	echo -e "	\033[36m-o\033[37m Specify the directory where the decoded and cut file shall be put."
+	echo "-> DELUGED CONFIG DIR"
+	echo -e "	\033[36m-c\033[37m Specify the config directory of deluged.\n	   This script will check whether the torrent exists and delete the otrkey only when the torrent was deleted."
+	echo "-> HELP"
+	echo -e "	\033[36m-h\033[37m Show this help."
+}
+
+# Look for lock file and exit if it is existing and $forceRun == 0
+function funcLock {
+	if [ -f /tmp/.otrDecodeAll.lock -a "$forceRun" != "1" ]; then
+		funcLog 1 "/tmp/.otrDecodeAll.lock existing! exiting..."
+		exit 1
+	else
+		funcLog 4 "Creating lock file /tmp/.otrDecodeAll.lock"
+		touch /tmp/.otrDecodeAll.lock
+	fi
+}
+
+# Delete lock file
+function funcUnlock {
+	funcLog 4 "Removing lock file /tmp/.otrDecodeAll.lock"
+	rm -f /tmp/.otrDecodeAll.lock
+}
+
+function funcMakeVars {
+	funcLog 5 "filename: $filename"
+
+	pathEncoded="$inDir/$filename.otrkey"
+	funcLog 5 "pathEncoded: $pathEncoded"
+
+	pathDecoded="$uncutDir/$filename"
+	funcLog 5 "pathDecoded: $pathDecoded"
+
+	pathCut="$cutDir/$filename.mkv"
+	funcLog 5 "pathCut: $pathCut"
+
+	label="$(grep "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+	funcLog 5 "label: $label"
+
+	sanename=$filename
+	bibname=${filename%%_[0-9][0-9].*}
+	bibname="${bibname//_/.}"
+	funcLog 5 "bibname: $bibname"
+
+	if [ -n "$label" ]; then
+		case $label in
+			"movie")
+				pathOut="Filme";;
+			"tvserie")
+				pathOut="Serien"
+				if [ -n "$cmdSaneRenamix" ]; then
+					tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
+					err=$?
+					case $err in
+						0)
+							bibname="${tmp%%..*}"
+							sanename="$tmp"
+							funcLog 5 "sanename: $sanename";;
+						1)
+							funcLog 1 "SaneRenamix: General error!";;
+						2)
+							funcLog 1 "SaneRenamix: Specified language not recognized";;
+						3)
+							funcLog 3 "SaneRenamix: Aborted (Ctrl+C)";;
+						10)
+							funcLog 2 "SaneRenamix: Series not found in TvDB";;
+						11)
+							funcLog 2 "SaneRenamix: Series not found in EPG";;
+						20)
+							funcLog 2 "SaneRenamix: No info for this episode found";;
+						21)
+							funcLog 2 "SaneRenamix: No episode title found in EPG";;
+						40)
+							funcLog 1 "SaneRenamix: Downloading EPG data failed";;
+						41)
+							funcLog 1 "SaneRenamix: Downloading list of episodes from TvDB failed";;
+						*)
+							funcLog 1 "SaneRenamix: Unknown error $err";;
+						esac
+				fi;;
+			"docu")
+				pathOut="Dokumentationen";;
+			*)
+				funcLog 2 "Unrecognized label: $label"
+				label=""
+				pathOut="";;
+		esac
+		pathOut="$pathOut/$bibname"
+	else
+		pathOut=""
+	fi
+	pathOut="$outDir/$pathOut/$sanename"
+	funcLog 5 "pathOut: $pathOut"
+}
+
+function funcProcessFiles {
+	local files="`ls $inDir/*.otrkey 2> /dev/null `"					# All otrkeys
+	for file in $files; do												# For each otrkey
+
+		filename="$(basename $file)"
+		filename="${filename%.otrkey}"
+		echo;
+		funcLog 0 "Processing $filename";
+		funcMakeVars $file
+		echo -e "	>> \033[32m$sanename\033[37m";
+
+		if [ -z "$label" ]; then
+			funcLog 1 "No label specified for this movie. Skipping"
+			continue;
+		fi
+
+		if [ -f "$pathOut" ]; then
+			funcLog 4 "File was already handled."
+			funcRemove $file
+			continue;
+		fi
+
+		funcDecode "$pathEncoded";
+		if [ $success -ne 1 ]; then									# Decoding failed, we can skip the rest
+			continue;
+		fi
+
+		funcRemove $file
+		if [ $success -ne 1 ]; then									# Removing failed, we can skip the rest
+			continue;
+		fi
+
+		#funcCut "$pathDecoded"
+		if [ $success -ne 1 ]; then									# Cutting failed, we can skip the rest
+			continue;
+		fi
+
+		funcMove "$pathMovie"
+		if [ $success -ne 1 ]; then									# Moving the file failed, we can skip the rest
+			continue;
+		fi
+
+	done
+}
+
+# Make the decoding stuff
+function funcDecode {
+	local sizeEn;
+	local sizeDe;
+	if [ -e "$pathDecoded" ]; then									# If we decoded this file before
+		sizeEn=`stat -c%s "$pathEncoded"`
+		sizeDe=`stat -c%s "$pathDecoded"`
+		if [ $(($sizeEn-$sizeDe)) -eq 522 ]; then 					# If decoding was successful
+			funcLog 3 "File was already decoded: $pathDecoded"		# Simply do nothing
+			pathMovie="$pathDecoded"
+		else														# Else decode it again
+			funcLog 3 "Previous decoding was not successfull"
+			rm "$pathDecoded"
+		fi
+	fi
+	if [ ! -e "$pathDecoded" ]; then								# If don't find the decoded file in $uncutDir
+		funcLog 4 "Decoding $filename"
+		funcLog 5 "     $cmdDecode $cmdDecodeArgs $pathEncoded"
+	
+		$cmdDecode $cmdDecodeArgs "$pathEncoded"					# Deocde the file
+
+		success=$?
+		if [ $success -eq 0 ]; then									# if otrdecoder exited successfully
+			if [ -f "$pathDecoded" ]; then
+				funcLog 4 "Successfully decoded"
+				echo -e "\033[32mDecoding successfull\033[37m";
+				pathMovie="$pathDecoded"
+				success=1;
+			else
+				funcLog 1 "Decoding failed but decoder exited with success status!"
+				success=0;
+			fi
+		else
+			funcLog 1 "Decoding failed (returned $success)!"
+			success=0
+		fi
+	fi
+}
+
+function funcRemove {
+	case $remove in
+		2)																# if we shall delete the file
+			funcLog 4 "Deleting $pathEncoded"
+			rm -f "$pathEncoded";;
+		1)
+			if [ -n "$delugeDir" ] && [ -d "$delugeDir/state" ]; then	# If deluge config dir is defined
+				if [ -n "`grep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
+					funcLog 4 "Torrent still exists in Deluge"
+				else
+					funcLog 3 "Deleting otrkey, torrent was removed"
+					rm -f "$pathEncoded";								# Delete otrkey, too
+				fi
+			fi;;
+	esac
+	success=1;
+}
+
+function funcCut {
+	funcLog 4 "Cutting $pathDecoded"
+	funcLog 5 "     $cmdCut $cmdCutArgs $pathDecoded"
+	
+	$cmdCut $cmdCutArgs "$pathDecoded"
+	success=$?
+	case $success in
+		0)
+			funcLog 4 "Successfully cut"
+			pathMove="$pathCut"
+			success=1;;
+		5)
+			funcLog 3 "No cutlist found"
+			pathMove="$pathCut"
+			success=1;;
+		*)
+			funcLog 1 "An error occured while cutting: $success!"
+			success=0;;
+	esac
+}
+
+function funcMove {
+	if [ ! -d "$pathOut" ]; then
+		mkdir -p "$(dirname $pathOut)"
+	fi
+	mv -f "$pathMovie" "$pathOut"
+	success=1
+}
+
+funcPerformChecks
+funcParam "$@"
+funcLock
+funcProcessFiles
+funcUnlock
