@@ -59,6 +59,7 @@ function funcPerformChecks {
 		exet=1
 	fi
 	if [ $exet -eq 1 ]; then
+		funcUnlock
 		exit 1
 	fi
 
