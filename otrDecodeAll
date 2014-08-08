@@ -11,6 +11,7 @@ logMsgTypes=("      " "error" "warn" "info" "debug" "debugV")
 logMsgColor=("\033[37m" "\033[31m" "\033[33m" "\033[37m" "\033[37m" "\033[37m")
 logLevel=0
 echoLevel=5
+lastXbmcCheck=0
 
 PwD=$(readlink -e $0)	# Get the path to this script
 PwD=$(dirname "$PwD")
@@ -46,16 +47,20 @@ function funcPerformChecks {
 	local exet;
 	exet=0
 
-	if ! type "$cmdDecode" >/dev/null 2>&1 ; then
+	if ! type "$cmdDecode" >/dev/null 2>&1; then
 		funcLog 1 "Please install otrtool"
 		exet=1
 	fi
-	if ! type "$cmdCut" >/dev/null 2>&1 ; then
+	if ! type "$cmdCut" >/dev/null 2>&1; then
 		funcLog 1 "Please check the path to multicutmkv"
 		exet=1
 	fi
-	if ! type "$cmdSaneRenamix" >/dev/null 2>&1 ; then
+	if ! type "$cmdSaneRenamix" >/dev/null 2>&1; then
 		funcLog 1 "Please check the path to SaneRenamix (set to empty if not wanted)"
+		exet=1
+	fi
+	if [ -n "$xbmcUrl" ] && ! type "curl" >/dev/null 2>&1; then
+		funcLog 1 "Please install curl to check the XBMC state"
 		exet=1
 	fi
 	if [ $exet -eq 1 ]; then
@@ -63,12 +68,21 @@ function funcPerformChecks {
 		exit 1
 	fi
 
-	if [ $forceRun -eq 0 ] && [ -n "$xbmcUrl" ]; then	# If we can and have to check whether XBMC is playing something
-		playerID="$(curl -s $xbmcUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
-		if [ -n "$playerID" ]; then
-			funcLog 3 "XBMC is running, exiting now"
-			funcUnlock
-			exit
+	funcPerformXbmcCheck
+}
+
+function funcPerformXbmcCheck {
+	local curTimestamp;
+	if [ $forceRun -eq 0 ] && [ -n "$xbmcUrl" ]; then			# If we can and have to check whether XBMC is playing something
+		curTimestamp=$(date +%s)
+		if [ $(($curTimestamp-$lastXbmcCheck)) -gt 10 ]; then	# Only check all 10 seconds
+			playerID="$(curl -s $xbmcUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
+			if [ -n "$playerID" ]; then
+				funcLog 3 "XBMC is running, exiting now"
+				funcUnlock
+				exit
+			fi
+			lastXbmcCheck=$curTimestamp
 		fi
 	fi
 }
@@ -237,6 +251,7 @@ function funcMakeVars {
 function funcProcessFiles {
 	local files="`ls $inDir/*.otrkey 2> /dev/null `"					# All otrkeys
 	for file in $files; do												# For each otrkey
+		funcPerformXbmcCheck
 
 		filename="$(basename $file)"
 		filename="${filename%.otrkey}"
