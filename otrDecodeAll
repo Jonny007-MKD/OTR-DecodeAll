@@ -90,7 +90,7 @@ function funcPerformXbmcCheck {
 
 # Parse the parameters
 function funcParam {
-	while getopts "frkvh?e:p:i:o:d:t:" optval; do
+	while getopts "frkvh?e:p:i:o:d:t:l:" optval; do
 		case $optval in
 			"f")
 				funcLog 4 "Set forceRun = 1"
@@ -123,6 +123,9 @@ function funcParam {
 			"c")
 				funcLog 4 "Set delugeDir = $OPTARG"
 				delugeDir=$OPTARG;;		# different deluge dir
+			"l")
+				funcLog 4 "Set labelFilter = $OPTARG"
+				labelFilter=$OPTARG;;
 			"h"|"?")
 				funcHelp;				# print help
 				exit;;
@@ -260,6 +263,10 @@ function funcProcessFiles {
 		funcMakeVars $file
 		echo -e "	>> \033[32m$sanename\033[37m";
 
+		if [ -n "$labelFilter" ] && [[ "$labelFilter" != "$label" ]]
+			funcLog 4 "Label did not match filter. Skipping";
+			continue;
+		fi
 		if [ -z "$label" ]; then
 			funcLog 1 "No label specified for this movie. Skipping"
 			continue;
