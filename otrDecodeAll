@@ -12,6 +12,8 @@ logMsgColor=("\033[37m" "\033[31m" "\033[33m" "\033[37m" "\033[37m" "\033[37m")
 logLevel=0
 echoLevel=5
 lastXbmcCheck=0
+umask 0002				# Set permissions 775/664 per default
+
 
 PwD=$(readlink -e $0)	# Get the path to this script
 PwD=$(dirname "$PwD")
@@ -180,6 +182,11 @@ function funcUnlock {
 	rm -f /tmp/.otrDecodeAll.lock
 }
 
+function funcGetLabel {
+	label="$(grep "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+	funcLog 5 "label: $label"
+}
+
 function funcMakeVars {
 	funcLog 5 "filename: $filename"
 
@@ -191,9 +198,6 @@ function funcMakeVars {
 
 	pathCut="$cutDir/$filename.mkv"
 	funcLog 5 "pathCut: $pathCut"
-
-	label="$(grep "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
-	funcLog 5 "label: $label"
 
 	sanename=$filename
 	bibname=${filename%%_[0-9][0-9].*}
@@ -260,10 +264,10 @@ function funcProcessFiles {
 		filename="${filename%.otrkey}"
 		echo;
 		funcLog 0 "Processing $filename";
-		funcMakeVars $file
-		echo -e "	>> \033[32m$sanename\033[37m";
+		funcGetLabel
 
-		if [ -n "$labelFilter" ] && [[ "$labelFilter" != "$label" ]]
+
+		if [ -n "$labelFilter" ] && [[ "$labelFilter" != "$label" ]]; then
 			funcLog 4 "Label did not match filter. Skipping";
 			continue;
 		fi
@@ -271,6 +275,10 @@ function funcProcessFiles {
 			funcLog 1 "No label specified for this movie. Skipping"
 			continue;
 		fi
+
+		funcMakeVars
+		echo -e "	>> \033[32m$sanename\033[37m";
+
 
 		if [ -f "$pathOut" ]; then
 			funcLog 4 "File was already handled."
