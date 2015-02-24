@@ -53,11 +53,11 @@ function funcPerformChecks {
 		funcLog 1 "Please install otrtool"
 		exet=1
 	fi
-	if ! type "$cmdCut" >/dev/null 2>&1; then
+	if [ -n "$cmdCut" ] && ! type "$cmdCut" >/dev/null 2>&1; then
 		funcLog 1 "Please check the path to multicutmkv"
 		exet=1
 	fi
-	if ! type "$cmdSaneRenamix" >/dev/null 2>&1; then
+	if [ -n "$cmdSaneRenamix" ] && ! type "$cmdSaneRenamix" >/dev/null 2>&1; then
 		funcLog 1 "Please check the path to SaneRenamix (set to empty if not wanted)"
 		exet=1
 	fi
@@ -85,6 +85,7 @@ function funcPerformXbmcCheck {
 				exit
 			fi
 			lastXbmcCheck=$curTimestamp
+			funcLog 5 "XBMC is not running"
 		fi
 	fi
 }
@@ -199,7 +200,7 @@ function funcMakeVars {
 	pathCut="$cutDir/$filename.mkv"
 	funcLog 5 "pathCut: $pathCut"
 
-	sanename=$filename
+	sanename=$filename		# Default value (in case of error)
 	bibname=${filename%%_[0-9][0-9].*}
 	bibname="${bibname//_/.}"
 	funcLog 5 "bibname: $bibname"
@@ -253,6 +254,10 @@ function funcMakeVars {
 	else
 		pathOut=""
 	fi
+	if [ $sanename != $filename ]; then
+		pathOutFilename="$outDir/$pathOut/$filename"
+		funcLog 5 "pathOutFilename: $pathOutFilename"
+	fi
 	pathOut="$outDir/$pathOut/$sanename"
 	funcLog 5 "pathOut: $pathOut"
 }
@@ -282,6 +287,10 @@ function funcProcessFiles {
 		echo -e "	>> \033[32m$sanename\033[37m";
 
 
+		if [ -n "$pathOutFilename" -a -f "$pathOutFilename" ]; then		# Sanerenamix could not name this file before, but now it can
+			funcLog 4 "Renamed $filename to $sanename"
+			mv $pathOutFilename $pathOut
+		fi
 		if [ -f "$pathOut" ]; then
 			funcLog 4 "File was already handled."
 			funcRemove $file
