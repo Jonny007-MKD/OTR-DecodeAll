@@ -13,7 +13,7 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	outDir="/Multimedia/Video/"										# Final dir with videos
 
 	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb)
-	xbmcUrl="user:password@localhost:8080"							# Specify user, password and port for XBMC JSON API (HTTP interface)
+	xbmcUrl="user:password@localhost:8080"							# Specify user, password and port for Kodi JSON API (HTTP interface)
 
 	logFile="/home/deluged/otrDecodeAll.log"						# path to the log file
 	# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
