@@ -208,6 +208,8 @@ function funcMakeVars {
 		case $label in
 			"movie")
 				pathOut="Filme";;
+			"movie-en")
+				pathOut="Filme-En";;
 			"tvserie")
 				pathOut="Serien"
 				if [ -n "$cmdSaneRenamix" ]; then
@@ -327,6 +329,7 @@ function funcDecode {
 	if [ ! -e "$pathDecoded" ]; then								# If don't find the decoded file in $uncutDir
 		funcLog 4 "Decoding $filename"
 		funcLog 5 "     $cmdDecode $cmdDecodeArgs $pathEncoded"
+		#echo "     $cmdDecode $cmdDecodeArgs $pathEncoded"
 	
 		$cmdDecode $cmdDecodeArgs "$pathEncoded"					# Deocde the file
 
