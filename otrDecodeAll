@@ -184,7 +184,7 @@ function funcUnlock {
 }
 
 function funcGetLabel {
-	label="$(grep "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+	label="$(grep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
 	funcLog 5 "label: $label"
 }
 
