@@ -61,8 +61,8 @@ function funcPerformChecks {
 		funcLog 1 "Please check the path to SaneRenamix (set to empty if not wanted)"
 		exet=1
 	fi
-	if [ -n "$xbmcUrl" ] && ! type "curl" >/dev/null 2>&1; then
-		funcLog 1 "Please install curl to check the XBMC state"
+	if [ -n "$kodiUrl" ] && ! type "curl" >/dev/null 2>&1; then
+		funcLog 1 "Please install curl to check the Kodi state"
 		exet=1
 	fi
 	if [ $exet -eq 1 ]; then
@@ -75,17 +75,17 @@ function funcPerformChecks {
 
 function funcPerformXbmcCheck {
 	local curTimestamp;
-	if [ $forceRun -eq 0 ] && [ -n "$xbmcUrl" ]; then			# If we can and have to check whether XBMC is playing something
+	if [ $forceRun -eq 0 ] && [ -n "$kodiUrl" ]; then			# If we can and have to check whether Kodi is playing something
 		curTimestamp=$(date +%s)
 		if [ $(($curTimestamp-$lastXbmcCheck)) -gt 10 ]; then	# Only check all 10 seconds
-			playerID="$(curl -s $xbmcUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
+			playerID="$(curl -s $kodiUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
 			if [ -n "$playerID" ]; then
-				funcLog 3 "XBMC is running, exiting now"
+				funcLog 3 "Kodi is running, exiting now"
 				funcUnlock
 				exit
 			fi
 			lastXbmcCheck=$curTimestamp
-			funcLog 5 "XBMC is not running"
+			funcLog 5 "Kodi is not running"
 		fi
 	fi
 }
@@ -143,7 +143,7 @@ function funcParam {
 function funcHelp {
 	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -v -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
 	echo "-> FORCE"
-	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile and XBMC. This may result into decoding some files multiple times (perhaps corrupting them) and making XBMC less smooth."
+	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile and Kodi. This may result into decoding some files multiple times (perhaps corrupting them) and making Kodi less smooth."
 	echo "-> REMOVE"
 	echo -e "	\033[36m-r\033[37m Make this script delete the original otrkey files."
 	echo "-> KEEP"
