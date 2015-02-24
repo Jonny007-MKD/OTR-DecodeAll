@@ -26,12 +26,22 @@ function funcConfigPre {	# These values are set at the beginning of the script
 # This way they can't be overridden, but can use the final config variables
 function funcConfigPost {
 	cmdDecode="/usr/bin/otrtool"									# path to otrkey decoder
-	cmdDecodeArgs="-x -e $user -p $pass -D $uncutDir"				# for peropeters otrdecoder
-	#cmdDecode="/home/pi/otr/otr/bin/qemu-x86_64 -L /home/pi/otr/otr /home/pi/otr/otr/bin64/otrdecoder-64 "
+	cmdDecodeArgs="-x -e $user -p $pass -D $uncutDir"				# for pyropeters otrdecoder
+
+	#cmdDecode="/home/pi/bin/qemu-x86_64 -L /home/pi/ /home/pi/bin64/otrdecoder-64"
 	#cmdDecodeArgs="-e $user -p $pass -o "$uncutDir" -i"			# for original otrdecoder
+
+	#cmdDecode="/usr/bin/otrpidecoder"								# path to NYrks otrdecoder
+	#cmdDecodeArgs="-d -e $user -p $pass"							
+	#uncutDir="$inDir"												# no output dir supported!
+
+
+
 	cmdCut="/home/deluged/multicutmkv.sh"							# path to multicut
 	cmdCutArgs=
+
+
+
 	cmdSaneRenamix="/home/deluged/saneRenamix.sh"					# path to saneRenamix
 	cmdSaneRenamixArgs="-s -f"
-
 }
