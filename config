@@ -8,8 +8,7 @@ function funcConfigPre {	# These values are set at the beginning of the script
 
 	delugeDir="/etc/deluged"										# Config dir of DelugeD
 	inDir="/Multimedia/Video/.Downloaded"							# Dir with .otrkeys
-	uncutDir="/Multimedia/Video/.Uncut"								# Dir with uncut videos (output of decoder)
-	cutDir="/Multimedia/Video/.Uncut"								# Dir with cut videos (output of cutter)
+	tempDir="/Multimedia/Video/.Temp"								# Dir with decoded and cut videos (output of decoder and cutter)
 	outDir="/Multimedia/Video/"										# Final dir with videos
 
 	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb)
@@ -26,19 +25,19 @@ function funcConfigPre {	# These values are set at the beginning of the script
 # This way they can't be overridden, but can use the final config variables
 function funcConfigPost {
 	cmdDecode="/usr/bin/otrtool"									# path to otrkey decoder
-	cmdDecodeArgs="-x -e $user -p $pass -D $uncutDir"				# for pyropeters otrdecoder
+	cmdDecodeArgs="-x -e $user -p $pass -D $tempDir"				# for pyropeters otrdecoder
 
 	#cmdDecode="/home/pi/bin/qemu-x86_64 -L /home/pi/ /home/pi/bin64/otrdecoder-64"
-	#cmdDecodeArgs="-e $user -p $pass -o "$uncutDir" -i"			# for original otrdecoder
+	#cmdDecodeArgs="-e $user -p $pass -o "$tempDir" -i"			# for original otrdecoder
 
 	#cmdDecode="/usr/bin/otrpidecoder"								# path to NYrks otrdecoder
 	#cmdDecodeArgs="-d -e $user -p $pass"							
-	#uncutDir="$inDir"												# no output dir supported!
+	#tempDir="$inDir"												# no output dir supported!
 
 
 
 	cmdCut="/home/deluged/multicutmkv.sh"							# path to multicut
-	cmdCutArgs=
+	cmdCutArgs="-o $tempDir"
 
 
 

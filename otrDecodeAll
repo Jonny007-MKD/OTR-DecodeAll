@@ -94,7 +94,7 @@ function funcPerformKodiCheck {
 
 # Parse the parameters
 function funcParam {
-	while getopts "frkvh?e:p:i:o:d:t:l:" optval; do
+	while getopts "frkvh?e:p:i:o:t:l:" optval; do
 		case $optval in
 			"f")
 				funcLog 4 "Set forceRun = 1"
@@ -120,13 +120,9 @@ function funcParam {
 			"o")
 				funcLog 4 "Set outDir = $OPTARG"
 				outDir=$OPTARG;;		# different output dir
-			"d")
-				funcLog 4 "Set uncutDir = $OPTARG"
-				uncutDir=$OPTARG		# different uncut dir
-				cutDir=$OPTARG;;		# different cut dir
-			"c")
-				funcLog 4 "Set delugeDir = $OPTARG"
-				delugeDir=$OPTARG;;		# different deluge dir
+			"t")
+				funcLog 4 "Set tempDir = $OPTARG"
+				tempDir=$OPTARG;;		# different temp dir
 			"l")
 				funcLog 4 "Set labelFilter = $OPTARG"
 				labelFilter=$OPTARG;;
@@ -204,11 +200,11 @@ function funcMakeVars {
 	funcLog 5 "pathAbsEncoded: $pathAbsEncoded"
 
 	# This is the absolute path to the decoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
-	pathTmpAbsDecoded="$uncutDir/$filename"
+	pathTmpAbsDecoded="$tempDir/$filename"
 	funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
 
 	# This is the absolute path to the cut file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi-cut.mkv)
-	pathTmpAbsCut="$cutDir/$filename$cutAppendix"
+	pathTmpAbsCut="$tempDir/$filename$cutAppendix"
 	funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
 
 	# Now we will determine the path where to put the file in the end (depends on label and saneRenamix)
@@ -324,8 +320,8 @@ function funcProcessFiles {
 
 		# If file was already decoded
 		if [ $status -le 2 ]; then
-			if [ -n "$pathAbsOutDecodedInsane" -a -f "$pathAbsOutDecodedInsane" ]; then		# Sanerenamix could not name this file before, but now it cans
-				funcLog 4 "Renamed decoded $filename to $sanename"				# We were unable to cut the last time
+			if [ -n "$pathAbsOutDecodedInsane" -a -f "$pathAbsOutDecodedInsane" ]; then	# Sanerenamix could not name this file before, but now it cans
+				funcLog 4 "Renamed decoded $filename to $sanename"			# We were unable to cut the last time
 				mv $pathAbsOutDecodedInsane $pathAbsOutDecoded
 				status=2;
 			elif [ -f "$pathAbsOutDecoded" ]; then
@@ -333,10 +329,8 @@ function funcProcessFiles {
 				status=2;
 			fi
 			if [ $status -eq 2 ]; then
-				pathTmpAbsDecoded="$pathAbsOutDecoded"							# Cut the file in the output dir directly
+				pathTmpAbsDecoded="$pathAbsOutDecoded"						# Use the decoded file in the output dir directly
 				funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
-				pathTmpAbsCut="$pathTmpAbsDecoded$cutAppendix"
-				funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
 			fi
 		fi
 
@@ -396,7 +390,7 @@ function funcDecode {
 
 	if [ -f "$pathTmpAbsDecoded" ]; then
 		success=1
-	else																	# If we don't find the decoded file in $uncutDir
+	else																	# If we don't find the decoded file in $tempDir
 		funcLog 4 "Decoding $filename"
 		funcLog 5 "     $cmdDecode $cmdDecodeArgs $pathAbsEncoded"
 
