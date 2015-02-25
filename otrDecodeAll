@@ -11,7 +11,7 @@ logMsgTypes=("      " "error" "warn" "info" "debug" "debugV")
 logMsgColor=("\033[37m" "\033[31m" "\033[33m" "\033[37m" "\033[37m" "\033[37m")
 logLevel=0
 echoLevel=5
-lastXbmcCheck=0
+lastKodiCheck=0
 umask 0002				# Set permissions 775/664 per default
 
 
@@ -70,21 +70,21 @@ function funcPerformChecks {
 		exit 1
 	fi
 
-	funcPerformXbmcCheck
+	funcPerformKodiCheck
 }
 
-function funcPerformXbmcCheck {
+function funcPerformKodiCheck {
 	local curTimestamp;
 	if [ $forceRun -eq 0 ] && [ -n "$kodiUrl" ]; then			# If we can and have to check whether Kodi is playing something
 		curTimestamp=$(date +%s)
-		if [ $(($curTimestamp-$lastXbmcCheck)) -gt 10 ]; then	# Only check all 10 seconds
+		if [ $(($curTimestamp-$lastKodiCheck)) -gt 10 ]; then	# Only check all 10 seconds
 			playerID="$(curl -s $kodiUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
 			if [ -n "$playerID" ]; then
 				funcLog 3 "Kodi is running, exiting now"
 				funcUnlock
 				exit
 			fi
-			lastXbmcCheck=$curTimestamp
+			lastKodiCheck=$curTimestamp
 			funcLog 5 "Kodi is not running"
 		fi
 	fi
@@ -282,7 +282,7 @@ function funcMakeVars {
 function funcProcessFiles {
 	local files="`ls $inDir/*.otrkey 2> /dev/null `"					# All otrkeys
 	for file in $files; do												# For each otrkey
-		funcPerformXbmcCheck
+		funcPerformKodiCheck					# Check whether Kodi is running
 
 		filename="$(basename $file)"
 		filename="${filename%.otrkey}"
