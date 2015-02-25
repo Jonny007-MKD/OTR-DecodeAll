@@ -189,30 +189,41 @@ function funcGetLabel {
 }
 
 function funcMakeVars {
+	# This contains the OTR name of the file (e.g. Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
 	funcLog 5 "filename: $filename"
 
-	pathEncoded="$inDir/$filename.otrkey"
-	funcLog 5 "pathEncoded: $pathEncoded"
-
-	pathDecoded="$uncutDir/$filename"
-	funcLog 5 "pathDecoded: $pathDecoded"
-
-	pathCut="$cutDir/$filename.mkv"
-	funcLog 5 "pathCut: $pathCut"
-
-	sanename=$filename		# Default value (in case of error)
+	# This will be our name for the subfolder (movie name, e.g. Good.Wife)
 	bibname=${filename%%_[0-9][0-9].*}
 	bibname="${bibname//_/.}"
 	funcLog 5 "bibname: $bibname"
 
+
+	# This is the absolute path to the encoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi.otrkey)
+	pathAbsEncoded="$inDir/$filename.otrkey"
+	funcLog 5 "pathAbsEncoded: $pathAbsEncoded"
+
+	# This is the absolute path to the decoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
+	pathTmpAbsDecoded="$uncutDir/$filename"
+	funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
+
+	# This is the absolute path to the cut file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi-cut.mkv)
+	pathTmpAbsCut="$cutDir/$filename-cut.mkv"
+	funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
+
+	# Now we will determine the path where to put the file in the end (depends on label and saneRenamix)
+	# sanename is normally the filename. In case of tv series the sanename will also contain the series and episode number and title
+	## TODO: Introduce some dictionary in the config and make this more general
+	sanename=$filename		# Default value (in case of error)
 	if [ -n "$label" ]; then
 		case $label in
-			"movie")
-				pathOut="Filme";;
-			"movie-en")
-				pathOut="Filme-En";;
-			"tvserie")
-				pathOut="Serien"
+			"movie")					# Normal movies
+				pathAbsOutDecoded="Filme";;
+			"movie-en")					# English movies
+				pathAbsOutDecoded="Filme-En";;
+			"docu")						# Documentations
+				pathAbsOutDecoded="Dokumentationen";;
+			"tvserie")					# TV Series. Use saneRenamix here
+				pathAbsOutDecoded="Serien"
 				if [ -n "$cmdSaneRenamix" ]; then
 					tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
 					err=$?
@@ -243,23 +254,29 @@ function funcMakeVars {
 							funcLog 1 "SaneRenamix: Unknown error $err";;
 						esac
 				fi;;
-			"docu")
-				pathOut="Dokumentationen";;
 			*)
 				funcLog 2 "Unrecognized label: $label"
 				label=""
-				pathOut="";;
+				pathAbsOutDecoded="";;
 		esac
-		pathOut="$pathOut/$bibname"
+		pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
 	else
-		pathOut=""
+		pathAbsOutDecoded=""
 	fi
-	if [ $sanename != $filename ]; then
-		pathOutFilename="$outDir/$pathOut/$filename"
-		funcLog 5 "pathOutFilename: $pathOutFilename"
+
+	# Save the insane filename in case saneRenamix did not work once before
+	if [ $sanename != $filename ]; then	# No sanename
+		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$filename"
+		funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
 	fi
-	pathOut="$outDir/$pathOut/$sanename"
-	funcLog 5 "pathOut: $pathOut"
+
+	# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
+	pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
+	funcLog 5 "pathAbsOutDecoded: $pathAbsOutDecoded"
+
+	# This will be the absolute path to the cut output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi-cut.mkv)
+	pathAbsOutCut="$pathAbsOutDecoded-cut.mkv"
+	funcLog 5 "pathAbsOutCut: $pathAbsOutCut"
 }
 
 function funcProcessFiles {
@@ -287,17 +304,17 @@ function funcProcessFiles {
 		echo -e "	>> \033[32m$sanename\033[37m";
 
 
-		if [ -n "$pathOutFilename" -a -f "$pathOutFilename" ]; then		# Sanerenamix could not name this file before, but now it can
+		if [ -n "$pathAbsOutDecodedInsane" -a -f "$pathAbsOutDecodedInsane" ]; then		# Sanerenamix could not name this file before, but now it can
 			funcLog 4 "Renamed $filename to $sanename"
-			mv $pathOutFilename $pathOut
+			mv $pathAbsOutDecodedInsane $pathAbsOutDecoded
 		fi
-		if [ -f "$pathOut" ]; then
+		if [ -f "$pathAbsOutDecoded" ]; then
 			funcLog 4 "File was already handled."
 			funcRemove $file
 			continue;
 		fi
 
-		funcDecode "$pathEncoded";
+		funcDecode "$pathAbsEncoded";
 		if [ $success -ne 1 ]; then									# Decoding failed, we can skip the rest
 			continue;
 		fi
@@ -307,7 +324,7 @@ function funcProcessFiles {
 			continue;
 		fi
 
-		#funcCut "$pathDecoded"
+		#funcCut "$pathTmpAbsDecoded"
 		if [ $success -ne 1 ]; then									# Cutting failed, we can skip the rest
 			continue;
 		fi
@@ -324,30 +341,30 @@ function funcProcessFiles {
 function funcDecode {
 	local sizeEn;
 	local sizeDe;
-	if [ -e "$pathDecoded" ]; then									# If we decoded this file before
-		sizeEn=`stat -c%s "$pathEncoded"`
-		sizeDe=`stat -c%s "$pathDecoded"`
+	if [ -e "$pathTmpAbsDecoded" ]; then									# If we decoded this file before
+		sizeEn=`stat -c%s "$pathAbsEncoded"`
+		sizeDe=`stat -c%s "$pathTmpAbsDecoded"`
 		if [ $(($sizeEn-$sizeDe)) -eq 522 ]; then 					# If decoding was successful
-			funcLog 3 "File was already decoded: $pathDecoded"		# Simply do nothing
-			pathMovie="$pathDecoded"
+			funcLog 3 "File was already decoded: $pathTmpAbsDecoded"		# Simply do nothing
+			pathMovie="$pathTmpAbsDecoded"
 		else														# Else decode it again
 			funcLog 3 "Previous decoding was not successfull"
-			rm "$pathDecoded"
+			rm "$pathTmpAbsDecoded"
 		fi
 	fi
-	if [ ! -e "$pathDecoded" ]; then								# If don't find the decoded file in $uncutDir
+	if [ ! -e "$pathTmpAbsDecoded" ]; then								# If don't find the decoded file in $uncutDir
 		funcLog 4 "Decoding $filename"
-		funcLog 5 "     $cmdDecode $cmdDecodeArgs $pathEncoded"
-		#echo "     $cmdDecode $cmdDecodeArgs $pathEncoded"
+		funcLog 5 "     $cmdDecode $cmdDecodeArgs $pathAbsEncoded"
+		#echo "     $cmdDecode $cmdDecodeArgs $pathAbsEncoded"
 	
-		$cmdDecode $cmdDecodeArgs "$pathEncoded"					# Deocde the file
+		$cmdDecode $cmdDecodeArgs "$pathAbsEncoded"					# Deocde the file
 
 		success=$?
 		if [ $success -eq 0 ]; then									# if otrdecoder exited successfully
-			if [ -f "$pathDecoded" ]; then
+			if [ -f "$pathTmpAbsDecoded" ]; then
 				funcLog 4 "Successfully decoded"
 				echo -e "\033[32mDecoding successfull\033[37m";
-				pathMovie="$pathDecoded"
+				pathMovie="$pathTmpAbsDecoded"
 				success=1;
 			else
 				funcLog 1 "Decoding failed but decoder exited with success status!"
@@ -363,15 +380,15 @@ function funcDecode {
 function funcRemove {
 	case $remove in
 		2)																# if we shall delete the file
-			funcLog 4 "Deleting $pathEncoded"
-			rm -f "$pathEncoded";;
+			funcLog 4 "Deleting $pathAbsEncoded"
+			rm -f "$pathAbsEncoded";;
 		1)
 			if [ -n "$delugeDir" ] && [ -d "$delugeDir/state" ]; then	# If deluge config dir is defined
 				if [ -n "`grep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
 					funcLog 4 "Torrent still exists in Deluge"
 				else
 					funcLog 3 "Deleting otrkey, torrent was removed"
-					rm -f "$pathEncoded";								# Delete otrkey, too
+					rm -f "$pathAbsEncoded";								# Delete otrkey, too
 				fi
 			fi;;
 	esac
@@ -379,19 +396,19 @@ function funcRemove {
 }
 
 function funcCut {
-	funcLog 4 "Cutting $pathDecoded"
-	funcLog 5 "     $cmdCut $cmdCutArgs $pathDecoded"
+	funcLog 4 "Cutting $pathTmpAbsDecoded"
+	funcLog 5 "     $cmdCut $cmdCutArgs $pathTmpAbsDecoded"
 	
-	$cmdCut $cmdCutArgs "$pathDecoded"
+	$cmdCut $cmdCutArgs "$pathTmpAbsDecoded"
 	success=$?
 	case $success in
 		0)
 			funcLog 4 "Successfully cut"
-			pathMove="$pathCut"
+			pathMove="$pathTmpAbsCut"
 			success=1;;
 		5)
 			funcLog 3 "No cutlist found"
-			pathMove="$pathCut"
+			pathMove="$pathTmpAbsCut"
 			success=1;;
 		*)
 			funcLog 1 "An error occured while cutting: $success!"
@@ -400,10 +417,10 @@ function funcCut {
 }
 
 function funcMove {
-	if [ ! -d "$pathOut" ]; then
-		mkdir -p "$(dirname $pathOut)"
+	if [ ! -d "$pathAbsOutDecoded" ]; then
+		mkdir -p "$(dirname $pathAbsOutDecoded)"
 	fi
-	mv -f "$pathMovie" "$pathOut"
+	mv -f "$pathMovie" "$pathAbsOutDecoded"
 	success=1
 }
 
