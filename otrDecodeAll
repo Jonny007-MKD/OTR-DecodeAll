@@ -282,16 +282,21 @@ function funcMakeVars {
 # In here lives the main loop
 function funcProcessFiles {
 	local nextStep
-	local status		# 0 undef; 1 encoded; 2 decoded; 3 cut; 4 moved;
+	local status		# 0 undef; 1 encoded; 2 decoded; 3 cut;
+	local alrMoved		# 0 not moved; 1 already moved;
 	local files="`ls $inDir/*.otrkey 2> /dev/null`"						# All otrkeys in input dir
 	for file in $files; do												# For each otrkey
 		funcPerformKodiCheck												# Check whether Kodi is running
-		echo;
+		if [ $echoLevel -eq 5 ]; then
+			echo -ne "\n...";
+			read;
+		else
+			echo
+		fi
 
 		filename="$(basename $file)"										# Determine the filename
 		filename="${filename%.otrkey}"
 		funcLog 0 "Processing $filename";
-		status=0;
 		funcGetLabel														# Read the label from the database
 
 
@@ -304,6 +309,8 @@ function funcProcessFiles {
 			continue;
 		fi
 
+		status=0;
+		alrMoved=0;
 		funcMakeVars														# Make all path variables
 		echo -e "	>> \033[32m$sanename\033[37m";
 		status=1;
@@ -313,9 +320,11 @@ function funcProcessFiles {
 			funcLog 4 "Renamed $filename to $sanename"
 			mv $pathAbsOutCutInsane $pathAbsOutCut
 			status=3;
+			alrMoved=1;
 		elif [ -f "$pathAbsOutCut" ]; then									# The final output file already exists
 			funcLog 4 "File was already decoded and cut."
-			status=4;
+			status=3;
+			alrMoved=1;
 		fi
 
 		# If file was already decoded
@@ -331,10 +340,16 @@ function funcProcessFiles {
 			if [ $status -eq 2 ]; then
 				pathTmpAbsDecoded="$pathAbsOutDecoded"						# Use the decoded file in the output dir directly
 				funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
+
+				if [ "$sanename" != "$filename" ]; then						# Our output file has a sanename
+					pathTmpAbsCut="$tempDir/$sanename$cutAppendix"			# so the cut file will also have this name
+					funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
+				fi
+				alrMoved=1;
 			fi
 		fi
 
-		if [ $status -eq 1 ]; then
+		if [ $status -eq 1 ]; then		# encoded
 			# Decode the file if neccessary
 			funcDecode "$pathAbsEncoded";
 			if [ $success -ne 1 ]; then										# Decoding failed, we can skip the rest
@@ -348,6 +363,7 @@ function funcProcessFiles {
 			funcCut "$pathTmpAbsDecoded"
 			if [ $success -eq 1 ]; then										# Cutting did not fail
 				status=3;
+				alrMoved=0;													# Our new file is in tempDir
 			fi
 		fi
 
@@ -363,7 +379,7 @@ function funcProcessFiles {
 		if [ $status -ge 2 ]; then
 			funcMove "$pathMoveFrom" "$pathMoveTo"
 			if [ $success -eq 1 ]; then										# Moving the file failed, we can skip the rest
-				status=4
+				alrMoved=1;
 			fi
 		fi
 
@@ -413,6 +429,44 @@ function funcDecode {
 	fi
 }
 
+# Cut our decoded file
+function funcCut {
+	funcLog 4 "Cutting $pathTmpAbsDecoded"
+	funcLog 5 "     $cmdCut $cmdCutArgs $pathTmpAbsDecoded"
+
+	$cmdCut $cmdCutArgs "$pathTmpAbsDecoded"
+	success=$?
+	case $success in
+		0)
+			funcLog 4 "Successfully cut"
+			success=1;;
+		5)
+			funcLog 3 "No cutlist found"
+			success=0;;
+		*)
+			funcLog 1 "An error occured while cutting: $success!"
+			success=0;;
+	esac
+}
+
+
+function funcMove {
+	if [ "$pathMoveFrom" != "$pathMoveTo" ]; then
+		if [ -f "$pathMoveFrom" ]; then
+			local dir="$(dirname $pathMoveTo)"
+
+			if [ ! -d "$dir" ]; then
+				mkdir -p "$dir"
+			fi
+
+			mv -f "$pathMoveFrom" "$pathMoveTo"
+			success=1;
+		else
+			success=0;
+		fi
+	fi
+}
+
 # Remove all unneeded files
 function funcRemove {
 	case $status in
@@ -422,7 +476,9 @@ function funcRemove {
 		funcRemoveFile "$pathAbsOutDecodedInsane"	#  "
 		;&
 	2)	# Decoded	-> remove otrkey
-		funcRemoveFile "$pathTmpAbsDecoded"			# temporary decoded file
+		if [ $alrMoved -eq 0 ]; then
+			funcRemoveFile "$pathTmpAbsDecoded"		# temporary decoded file
+		fi
 		
 		if [ $remove -eq 2 ]; then			# force deleting
 			funcRemoveFile "$pathAbsEncoded";
@@ -450,40 +506,6 @@ function funcRemoveFile
 	fi
 }
 
-# Cut our decoded file
-function funcCut {
-	funcLog 4 "Cutting $pathTmpAbsDecoded"
-	funcLog 5 "     $cmdCut $cmdCutArgs $pathTmpAbsDecoded"
-
-	$cmdCut $cmdCutArgs "$pathTmpAbsDecoded"
-	success=$?
-	case $success in
-		0)
-			funcLog 4 "Successfully cut"
-			success=1;;
-		5)
-			funcLog 3 "No cutlist found"
-			pathMove="$pathTmpAbsCut"
-			success=0;;
-		*)
-			funcLog 1 "An error occured while cutting: $success!"
-			success=0;;
-	esac
-}
-
-
-function funcMove {
-	if [ "$pathMoveFrom" != "$pathMoveTo" ]; then
-		local dir="$(dirname $pathMoveTo)"
-
-		if [ ! -d "$dir" ]; then
-			mkdir -p "$dir"
-		fi
-
-		mv -f "$pathMoveFrom" "$pathMoveTo"
-	fi
-	success=1
-}
 
 
 ######
