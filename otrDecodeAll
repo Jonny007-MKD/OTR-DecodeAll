@@ -32,7 +32,11 @@ function funcLog {
 		echo -e "`date +"%d.%m.%y %T"` ${logMsgTypes[$1]}\t$2" >> $logFile
 	fi
 	if [ $1 -le $echoLevel ]; then
-		echo -e "${logMsgColor[$(($1))]}${logMsgTypes[$1]}:\t$2\033[37m"
+		if [ $1 -eq 1 ]; then	# error
+			echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m" >&2
+		else
+			echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m"
+		fi
 	fi
 }
 
