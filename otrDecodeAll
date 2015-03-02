@@ -13,7 +13,6 @@ logLevel=0
 echoLevel=5
 lastKodiCheck=0
 cutAppendix="-cut.mkv"
-umask 0002				# Set permissions 775/664 per default
 
 
 PwD=$(readlink -e $0)	# Get the path to this script
@@ -487,7 +486,7 @@ function funcRemove {
 		if [ $remove -eq 2 ]; then			# force deleting
 			funcRemoveFile "$pathAbsEncoded";
 		elif [ $remove -eq 1 ]; then		# test torrent client
-			## TODO: Add more checks here, not only Deluge. Therefore we need a new config var
+			## Add more checks here, not only Deluge
 			if [ -n "$delugeDir" ] && [ -d "$delugeDir/state" ]; then	# If deluge config dir is defined
 				if [ -n "`grep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
 					funcLog 4 "Torrent still exists in Deluge"

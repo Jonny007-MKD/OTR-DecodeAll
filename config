@@ -18,6 +18,8 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
 	logLevel=2														#level, which messages shall be written into the log.
 	echoLevel=5														#level, which messages shall be written to stdout.
+
+	umask 0002														# Set permissions 775/664 per default
 }
 
 
@@ -37,7 +39,7 @@ function funcConfigPost {
 
 
 	cmdCut="/home/deluged/multicutmkv.sh"							# path to multicut
-	cmdCutArgs="-o $tempDir"
+	cmdCutArgs="-o $tempDir -t $tempDir"
 
 
 
