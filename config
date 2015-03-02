@@ -13,6 +13,11 @@ function funcConfigPre {	# These values are set at the beginning of the script
 
 	kodiUrl="user:password@localhost:8080"							# Specify user, password and port for Kodi JSON API (HTTP interface)
 
+	logFile="/home/deluged/otrDecodeAll.log"						# path to the log file
+	# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
+	logLevel=2														# level, which messages shall be written into the log.
+	echoLevel=5														# level, which messages shall be written to stdout.
+
 	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb) (optional)
 	# Add label to directory mapping. (optional)
 	#   1st arg: Label
@@ -22,11 +27,6 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	addLabel "movie-en" "Filme-En"			"false"
 	addLabel "docu"		"Dokumentationen"
 	addLabel "tvserie"	"Serien"			true
-
-	logFile="/home/deluged/otrDecodeAll.log"						# path to the log file
-	# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
-	logLevel=2														# level, which messages shall be written into the log.
-	echoLevel=5														# level, which messages shall be written to stdout.
 
 	umask 0002														# Set permissions 775/664 per default
 }
