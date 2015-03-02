@@ -9,15 +9,24 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	delugeDir="/etc/deluged"										# Config dir of DelugeD
 	inDir="/Multimedia/Video/.Downloaded"							# Dir with .otrkeys
 	tempDir="/Multimedia/Video/.Temp"								# Dir with decoded and cut videos (output of decoder and cutter)
-	outDir="/Multimedia/Video/"										# Final dir with videos
+	outDir="/Multimedia/Video"										# Final dir with videos
 
-	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb)
 	kodiUrl="user:password@localhost:8080"							# Specify user, password and port for Kodi JSON API (HTTP interface)
+
+	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb) (optional)
+	# Add label to directory mapping. (optional)
+	#   1st arg: Label
+	#   2nd arg: Each movie with this label will be moved to this subdirectory of $outDir
+	#   3rd arg: (optional) Whether SaneRenamix shall be used for movies with this label (default: false)
+	addLabel "movie"	"Filme"				0
+	addLabel "movie-en" "Filme-En"			"false"
+	addLabel "docu"		"Dokumentationen"
+	addLabel "tvserie"	"Serien"			true
 
 	logFile="/home/deluged/otrDecodeAll.log"						# path to the log file
 	# log levels:	0=off; 1=error; 2=warn; 3=info; 4 debug; 5 verbose debug
-	logLevel=2														#level, which messages shall be written into the log.
-	echoLevel=5														#level, which messages shall be written to stdout.
+	logLevel=2														# level, which messages shall be written into the log.
+	echoLevel=5														# level, which messages shall be written to stdout.
 
 	umask 0002														# Set permissions 775/664 per default
 }
@@ -30,7 +39,7 @@ function funcConfigPost {
 	cmdDecodeArgs="-x -e $user -p $pass -D $tempDir"				# for pyropeters otrdecoder
 
 	#cmdDecode="/home/pi/bin/qemu-x86_64 -L /home/pi/ /home/pi/bin64/otrdecoder-64"
-	#cmdDecodeArgs="-e $user -p $pass -o "$tempDir" -i"			# for original otrdecoder
+	#cmdDecodeArgs="-e $user -p $pass -o "$tempDir" -i"				# for original otrdecoder
 
 	#cmdDecode="/usr/bin/otrpidecoder"								# path to NYrks otrdecoder
 	#cmdDecodeArgs="-d -e $user -p $pass"							

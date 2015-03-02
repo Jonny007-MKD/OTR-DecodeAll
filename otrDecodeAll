@@ -13,6 +13,8 @@ logLevel=0
 echoLevel=5
 lastKodiCheck=0
 cutAppendix="-cut.mkv"
+declare -A label2Dir
+declare -A label2SaneRename
 
 
 PwD=$(readlink -e $0)	# Get the path to this script
@@ -36,6 +38,48 @@ function funcLog {
 		else
 			echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m"
 		fi
+	fi
+}
+
+function addLabel {
+	success=1;
+	case $# in
+	[0-1])
+		funcLog 1 "Not enough arguments given for addLabel! Give at least name and directory"
+		success=0;;
+	2)
+		sr=0;;
+	3)
+		case $3 in
+		0)     ;&
+		[fF])  ;&
+		false) ;&
+		no)
+			sr=0;;
+
+		1)     ;&
+		[tT])  ;&
+		true)  ;&
+		yes)
+			sr=1;;
+		*)
+			funcLog 1 "addLabel: Could not understand third argument \"$3\"! Please give \"true\" or \"false\" to specify whether SaneRenamix shall be used for this label."
+			success=0;;
+		esac;;
+	*)
+		funcLog 1 "Too many arguments for addLabel! Give no more than name, directory and bool whether we shall use sanerenamix for this label"
+		success=0;;
+	esac
+
+	if [ ! -d "$outDir/$2" ]; then
+		funcLog 1 "addLabel: Directory $outDir/$2 does not exist. Please create it first!"
+		success=0;
+	fi
+
+	if [ $success -eq 1 ]; then
+		funcLog 5 "Adding label \"$1\"	with dir = \"$2\"	and sanerename = $sr"
+		label2Dir["$1"]="$2";
+		label2SaneRename["$1"]=$sr;
 	fi
 }
 
@@ -184,8 +228,13 @@ function funcUnlock {
 }
 
 function funcGetLabel {
-	label="$(grep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
-	funcLog 5 "label: $label"
+	if [ -n "$torrentDb" -a -r "$torrentDb" ]; then
+		label="$(grep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+		funcLog 5 "label: $label"
+	else
+		funcLog 5 "no/incorrect torrentDb given"
+		label="N\\A"
+	fi
 }
 
 function funcMakeVars {
@@ -214,55 +263,49 @@ function funcMakeVars {
 	# sanename is normally the filename. In case of tv series the sanename will also contain the series and episode number and title
 	## TODO: Introduce some dictionary in the config and make this more general
 	sanename=$filename		# Default value (in case of error)
-	if [ -n "$label" ]; then
-		case $label in
-			"movie")					# Normal movies
-				pathAbsOutDecoded="Filme";;
-			"movie-en")					# English movies
-				pathAbsOutDecoded="Filme-En";;
-			"docu")						# Documentations
-				pathAbsOutDecoded="Dokumentationen";;
-			"tvserie")					# TV Series. Use saneRenamix here
-				pathAbsOutDecoded="Serien"
-				if [ -n "$cmdSaneRenamix" ]; then
-					tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
-					err=$?
-					case $err in
-						0)
-							bibname="${tmp%%..*}"
-							sanename="$tmp"
-							funcLog 5 "sanename: $sanename";;
-						1)
-							funcLog 1 "SaneRenamix: General error!";;
-						2)
-							funcLog 1 "SaneRenamix: Specified language not recognized";;
-						3)
-							funcLog 3 "SaneRenamix: Aborted (Ctrl+C)";;
-						10)
-							funcLog 2 "SaneRenamix: Series not found in TvDB";;
-						11)
-							funcLog 2 "SaneRenamix: Series not found in EPG";;
-						20)
-							funcLog 2 "SaneRenamix: No info for this episode found";;
-						21)
-							funcLog 2 "SaneRenamix: No episode title found in EPG";;
-						40)
-							funcLog 1 "SaneRenamix: Downloading EPG data failed";;
-						41)
-							funcLog 1 "SaneRenamix: Downloading list of episodes from TvDB failed";;
-						*)
-							funcLog 1 "SaneRenamix: Unknown error $err";;
-						esac
-				fi;;
-			*)
+	if [ ${#label2Dir[@]} -gt 0 -a "$label" != "N\\A" ]; then				# if we want to use labels
+		if [ -z "$label" ]; then													# don't allow empty labels
+			pathAbsOutDecoded=""
+		else
+			pathAbsOutDecoded="${label2Dir["$label"]}"								# get relative output directory for this label
+			if [ -z "$pathAbsOutDecoded" ]; then
 				funcLog 2 "Unrecognized label: $label"
 				label=""
-				pathAbsOutDecoded="";;
-		esac
-		pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
-	else
-		pathAbsOutDecoded=""
-	fi
+				pathAbsOutDecoded=""
+			elif [ ${label2SaneRename["$label"]} -eq 1 ]; then						# call SaneRenamix if indicated
+				tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
+				local err=$?
+				case $err in		# return value conversion
+				0)
+					bibname="${tmp%%..*}"
+					sanename="$tmp"
+					funcLog 5 "sanename: $sanename";;
+				1)
+					funcLog 1 "SaneRenamix: General error!";;
+				2)
+					funcLog 1 "SaneRenamix: Specified language not recognized";;
+				3)
+					funcLog 3 "SaneRenamix: Aborted (Ctrl+C)";;
+				10)
+					funcLog 2 "SaneRenamix: Series not found in TvDB";;
+				11)
+					funcLog 2 "SaneRenamix: Series not found in EPG";;
+				20)
+					funcLog 2 "SaneRenamix: No info for this episode found";;
+				21)
+					funcLog 2 "SaneRenamix: No episode title found in EPG";;
+				40)
+					funcLog 1 "SaneRenamix: Downloading EPG data failed";;
+				41)
+					funcLog 1 "SaneRenamix: Downloading list of episodes from TvDB failed";;
+				*)
+					funcLog 1 "SaneRenamix: Unknown error $err";;
+				esac
+			fi
+		fi
+	fi																			# if we do not want to use labels
+
+	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
 
 	# Save the insane filename in case saneRenamix did not work once before
 	if [ $sanename != $filename ]; then	# No sanename
@@ -307,7 +350,7 @@ function funcProcessFiles {
 			funcLog 4 "Label did not match filter. Skipping";
 			continue;
 		fi
-		if [ -z "$label" ]; then											# Empty label --> skip
+		if [ -z "$label" -a "$label" != "N\\A" ]; then						# Empty label and torrentDb does exist --> skip
 			funcLog 1 "No label specified for this movie. Skipping"
 			continue;
 		fi
