@@ -142,7 +142,7 @@ function funcParam {
 
 # Print some help text and explain parameters
 function funcHelp {
-	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -k -v -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-c delugeDir] [-o outputDir]\033[0;37m"
+	echo -e "\n\033[1;31m./otrDecodeAll.sh [-f -r -k -v -h] [-e user] [-p password] [-i inputDir] [-d decodedDir] [-o outputDir] [-l label]\033[0;37m"
 	echo "-> FORCE"
 	echo -e "	\033[36m-f\033[37m Make this script ignore the lockfile and Kodi. This may result into decoding some files multiple times (perhaps corrupting them) and making Kodi less smooth."
 	echo "-> REMOVE"
@@ -161,8 +161,8 @@ function funcHelp {
 	echo -e "	\033[36m-d\033[37m Specify the output directory where the decoded file shall be put before cutting."
 	echo "-> UNCUTDIR"
 	echo -e "	\033[36m-o\033[37m Specify the directory where the decoded and cut file shall be put."
-	echo "-> DELUGED CONFIG DIR"
-	echo -e "	\033[36m-c\033[37m Specify the config directory of deluged.\n	   This script will check whether the torrent exists and delete the otrkey only when the torrent was deleted."
+	echo "-> LABEL"
+	echo -e "	\033[36m-l\033[37m Only decode movies with the specified label."
 	echo "-> HELP"
 	echo -e "	\033[36m-h\033[37m Show this help."
 }
