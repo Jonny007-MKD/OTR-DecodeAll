@@ -252,7 +252,7 @@ function funcUnlock {
 
 function funcGetLabel {
 	if [ -n "$torrentDb" -a -r "$torrentDb" ]; then
-		label="$(grep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+		label="$(LC_ALL=C fgrep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
 		funcLog 5 "label: $label"
 	else
 		funcLog 5 "no/incorrect torrentDb given"
@@ -581,7 +581,7 @@ function funcRemove {
 		elif (( remove == 1 )); then		# test torrent client
 			## Add more checks here, not only Deluge
 			if [ -n "$delugeDir" ] && [ -d "$delugeDir/state" ]; then	# If deluge config dir is defined
-				if [ -n "`grep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
+				if [ -n "`LC_ALL=C fgrep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
 					funcLog 4 "Torrent still exists in Deluge"
 				else
 					funcRemoveFile "$pathAbsEncoded";
