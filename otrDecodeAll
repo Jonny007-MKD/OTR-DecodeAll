@@ -13,6 +13,9 @@ logLevel=0
 echoLevel=5
 lastKodiCheck=0
 cutAppendix="-cut.mkv"
+lastProcessingLogPrinted=0
+lastProcessingEchoed=0
+lastProcessingEchoedNL=0
 declare -A label2Dir
 declare -A label2SaneRename
 
@@ -29,14 +32,34 @@ function ctrl_c() {
 }
 
 function funcLog {
-	if [ $1 -le $logLevel ]; then
-		echo -e "`date +"%d.%m.%y %T"` ${logMsgTypes[$1]}\t$2" >> $logFile
-	fi
-	if [ $1 -le $echoLevel ]; then
-		if [ $1 -eq 1 ]; then	# error
-			echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m" >&2
-		else
-			echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m"
+	if [ $1 -eq 0 ]; then										# this is a "Processing ..." message and will be stored until an event is logged
+		lastProcessingLog="`date +"%d.%m.%y %T"` ${logMsgTypes[0]}\t$2"			# store message
+		lastProcessingLogPrinted=0;												# was not printed yet to log
+		lastProcessingEcho="${logMsgColor[0]}\t$2\033[37m"						# store message
+		lastProcessingEchoed=0;													# was not printed to stdout
+		lastProcessingEchoedNL=0;												# no new line was printed to stdout
+	else
+		if [ $1 -le $logLevel ]; then							# if we shall log this message
+			if [ $lastProcessingLogPrinted -eq 0 ]; then		# and have not yet logged the "Processing ..." message
+				echo -e "$lastProcessingLog" >> $logFile
+				lastProcessingLogPrinted=1;
+			fi
+			echo -e "`date +"%d.%m.%y %T"` ${logMsgTypes[$1]}\t$2" >> $logFile
+		fi
+		if [ $1 -le $echoLevel ]; then							# if we shall echo this message
+			if [ $lastProcessingEchoed -eq 0 ]; then			# and have not yet echoed the "Processing ..." message
+				if [ $lastProcessingEchoedNL -eq 0 ]; then
+					echo
+					lastProcessingEchoedNL=1
+				fi
+				echo -e "$lastProcessingEcho"
+				lastProcessingEchoed=1;
+			fi
+			if [ $1 -eq 1 ]; then
+				echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m" >&2	# redirect error to stderr
+			else
+				echo -e "${logMsgColor[$1]}${logMsgTypes[$1]}:\t$2\033[37m"
+			fi
 		fi
 	fi
 }
@@ -334,10 +357,8 @@ function funcProcessFiles {
 	for file in $files; do												# For each otrkey
 		funcPerformKodiCheck												# Check whether Kodi is running
 		if [ $echoLevel -eq 5 ]; then
-			echo -ne "\n...";
+			echo -ne "\npress to continue...";
 			read;
-		else
-			echo
 		fi
 
 		filename="$(basename $file)"										# Determine the filename
@@ -358,6 +379,10 @@ function funcProcessFiles {
 		status=0;
 		alrMoved=0;
 		funcMakeVars														# Make all path variables
+		if [ $lastProcessingEchoedNL -eq 0 ]; then
+			echo			# create a newline to separate output
+			lastProcessingEchoedNL=1
+		fi
 		echo -e "	>> \033[32m$sanename\033[37m";
 		status=1;
 
@@ -462,7 +487,6 @@ function funcDecode {
 		if [ $success -eq 0 ]; then											# if otrdecoder exited successfully
 			if [ -f "$pathTmpAbsDecoded" ]; then
 				funcLog 4 "Successfully decoded"
-				echo -e "\033[32mDecoding successfull\033[37m";
 				success=1;
 			else
 				funcLog 1 "Decoding failed but decoder exited with success status!"
