@@ -40,15 +40,15 @@ function funcLog {
 		lastProcessingEchoedNL=0;												# no new line was printed to stdout
 	else
 		if [ $1 -le $logLevel ]; then							# if we shall log this message
-			if [ $lastProcessingLogPrinted -eq 0 ]; then		# and have not yet logged the "Processing ..." message
+			if (( lastProcessingLogPrinted == 0 )); then		# and have not yet logged the "Processing ..." message
 				echo -e "$lastProcessingLog" >> $logFile
 				lastProcessingLogPrinted=1;
 			fi
 			echo -e "`date +"%d.%m.%y %T"` ${logMsgTypes[$1]}\t$2" >> $logFile
 		fi
 		if [ $1 -le $echoLevel ]; then							# if we shall echo this message
-			if [ $lastProcessingEchoed -eq 0 ]; then			# and have not yet echoed the "Processing ..." message
-				if [ $lastProcessingEchoedNL -eq 0 ]; then
+			if (( lastProcessingEchoed == 0 )); then			# and have not yet echoed the "Processing ..." message
+				if (( lastProcessingEchoedNL == 0 )); then
 					echo
 					lastProcessingEchoedNL=1
 				fi
@@ -99,7 +99,7 @@ function addLabel {
 		success=0;
 	fi
 
-	if [ $success -eq 1 ]; then
+	if (( success == 1 )); then
 		funcLog 5 "Adding label \"$1\"	with dir = \"$2\"	and sanerename = $sr"
 		label2Dir["$1"]="$2";
 		label2SaneRename["$1"]=$sr;
@@ -136,7 +136,7 @@ function funcPerformChecks {
 		funcLog 1 "Please install curl to check the Kodi state"
 		exet=1
 	fi
-	if [ $exet -eq 1 ]; then
+	if (( exet == 1 )); then
 		funcUnlock
 		exit 1
 	fi
@@ -146,7 +146,7 @@ function funcPerformChecks {
 
 function funcPerformKodiCheck {
 	local curTimestamp;
-	if [ $forceRun -eq 0 ] && [ -n "$kodiUrl" ]; then			# If we can and have to check whether Kodi is playing something
+	if (( forceRun == 0 )) && [ -n "$kodiUrl" ]; then			# If we can and have to check whether Kodi is playing something
 		curTimestamp=$(date +%s)
 		if [ $(($curTimestamp-$lastKodiCheck)) -gt 10 ]; then	# Only check all 10 seconds
 			playerID="$(curl -s $kodiUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "Player.GetActivePlayers", "id": 1}' | grep -o "[0-9],.type.:.$1" | grep -o '[0-9]')"
@@ -356,7 +356,7 @@ function funcProcessFiles {
 	local files="`ls $inDir/*.otrkey 2> /dev/null`"						# All otrkeys in input dir
 	for file in $files; do												# For each otrkey
 		funcPerformKodiCheck												# Check whether Kodi is running
-		if [ $echoLevel -eq 5 ]; then
+		if (( echoLevel == 5 )); then
 			echo -ne "\npress to continue...";
 			read;
 		fi
@@ -367,7 +367,7 @@ function funcProcessFiles {
 		funcGetLabel														# Read the label from the database
 
 
-		if [ -n "$labelFilter" ] && [[ "$labelFilter" != "$label" ]]; then	# This label shall not be handled --> skip
+		if [ -n "$labelFilter" ] && [ "$labelFilter" != "$label" ]; then	# This label shall not be handled --> skip
 			funcLog 4 "Label did not match filter. Skipping";
 			continue;
 		fi
@@ -379,7 +379,7 @@ function funcProcessFiles {
 		status=0;
 		alrMoved=0;
 		funcMakeVars														# Make all path variables
-		if [ $lastProcessingEchoedNL -eq 0 ]; then
+		if (( lastProcessingEchoedNL == 0 )); then
 			echo			# create a newline to separate output
 			lastProcessingEchoedNL=1
 		fi
@@ -399,7 +399,7 @@ function funcProcessFiles {
 		fi
 
 		# If file was already decoded
-		if [ $status -le 2 ]; then
+		if (( status <= 2 )); then
 			if [ -n "$pathAbsOutDecodedInsane" -a -f "$pathAbsOutDecodedInsane" ]; then	# Sanerenamix could not name this file before, but now it cans
 				funcLog 4 "Renamed decoded $filename to $sanename"			# We were unable to cut the last time
 				mv $pathAbsOutDecodedInsane $pathAbsOutDecoded
@@ -408,7 +408,7 @@ function funcProcessFiles {
 				funcLog 4 "File was already decoded."
 				status=2;
 			fi
-			if [ $status -eq 2 ]; then
+			if (( status == 2 )); then
 				pathTmpAbsDecoded="$pathAbsOutDecoded"						# Use the decoded file in the output dir directly
 				funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
 
@@ -420,19 +420,19 @@ function funcProcessFiles {
 			fi
 		fi
 
-		if [ $status -eq 1 ]; then		# encoded
+		if (( status == 1 )); then		# encoded
 			# Decode the file if neccessary
 			funcDecode "$pathAbsEncoded";
-			if [ $success -ne 1 ]; then										# Decoding failed, we can skip the rest
+			if (( success != 1 )); then										# Decoding failed, we can skip the rest
 				continue;
 			fi
 			status=2
 		fi
 
-		if [ $status -eq 2 ]; then
+		if (( status == 2 )); then
 			# Cut the file if neccessary
 			funcCut "$pathTmpAbsDecoded"
-			if [ $success -eq 1 ]; then										# Cutting did not fail
+			if (( success == 1 )); then										# Cutting did not fail
 				status=3;
 				alrMoved=0;													# Our new file is in tempDir
 			fi
@@ -440,16 +440,16 @@ function funcProcessFiles {
 
 
 		# Move the final file to its destination
-		if [ $status -eq 2 ]; then		# only decoded
+		if (( status == 2 )); then		# only decoded
 			pathMoveFrom="$pathTmpAbsDecoded"
 			pathMoveTo="$pathAbsOutDecoded"
-		elif [ $status -eq 3 ]; then	# also cut
+		elif (( status == 3 )); then	# also cut
 			pathMoveFrom="$pathTmpAbsCut"
 			pathMoveTo="$pathAbsOutCut"
 		fi
-		if [ $status -ge 2 ]; then
+		if (( status >= 2 )); then
 			funcMove "$pathMoveFrom" "$pathMoveTo"
-			if [ $success -eq 1 ]; then										# Moving the file failed, we can skip the rest
+			if (( success == 1 )); then										# Moving the file failed, we can skip the rest
 				alrMoved=1;
 			fi
 		fi
@@ -484,7 +484,7 @@ function funcDecode {
 		$cmdDecode $cmdDecodeArgs "$pathAbsEncoded"							# Deocde the file
 
 		success=$?
-		if [ $success -eq 0 ]; then											# if otrdecoder exited successfully
+		if (( success == 0 )); then											# if otrdecoder exited successfully
 			if [ -f "$pathTmpAbsDecoded" ]; then
 				funcLog 4 "Successfully decoded"
 				success=1;
@@ -538,7 +538,7 @@ function funcCut {
 		*)
 			funcLog 1 "An unknown error occured while cutting: $success!";;
 	esac
-	if [ $success -eq 0 ]; then
+	if (( success == 0 )); then
 		success=1
 	else
 		success=0
@@ -572,13 +572,13 @@ function funcRemove {
 		funcRemoveFile "$pathAbsOutDecodedInsane"	#  "
 		;&
 	2)	# Decoded	-> remove otrkey
-		if [ $alrMoved -eq 0 ]; then
+		if (( alrMoved == 0 )); then
 			funcRemoveFile "$pathTmpAbsDecoded"		# temporary decoded file
 		fi
 		
-		if [ $remove -eq 2 ]; then			# force deleting
+		if (( remove == 2 )); then			# force deleting
 			funcRemoveFile "$pathAbsEncoded";
-		elif [ $remove -eq 1 ]; then		# test torrent client
+		elif (( remove == 1 )); then		# test torrent client
 			## Add more checks here, not only Deluge
 			if [ -n "$delugeDir" ] && [ -d "$delugeDir/state" ]; then	# If deluge config dir is defined
 				if [ -n "`grep "$filename" "$delugeDir/state" -R --include=*.torrent`" ]; then
