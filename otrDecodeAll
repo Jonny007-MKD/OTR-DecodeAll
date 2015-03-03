@@ -484,15 +484,41 @@ function funcCut {
 	success=$?
 	case $success in
 		0)
-			funcLog 4 "Successfully cut"
-			success=1;;
-		5)
-			funcLog 3 "No cutlist found"
-			success=0;;
+			funcLog 4 "Successfully cut";;
+		1)
+			funcLog 1 "multicutmkv: General error!";;
+		2)
+			funcLog 1 "multicutmkv: Missing arguments!";;
+		3)
+			funcLog 1 "multicutmkv: Temporary folder could not be created!";;
+		4)
+			funcLog 1 "multicutmkv: Specified file does not exist!";;
+		10)
+			funcLog 3 "multicutmkv: No cutlist found.";;
+		11)
+			funcLog 2 "multicutmkv: Downloading cutlist failed!";;
+		12)
+			funcLog 2 "multicutmkv: Unknown cutlist format!";;
+		20)
+			funcLog 2 "multicutmkv: ffmsindex failed!";;
+		21)
+			funcLog 2 "multicutmkv: mkvmerge failed!";;
+		22)
+			funcLog 2 "multicutmkv: x264 failed!";;
+		6)
+			funcLog 1 "multicutmkv: Error code 6!";;
+		7)
+			funcLog 1 "multicutmkv: Error code 7!";;
+		126)
+			funcLog 1 "multicutmkv: Additional software needed!";;
 		*)
-			funcLog 1 "An error occured while cutting: $success!"
-			success=0;;
+			funcLog 1 "An unknown error occured while cutting: $success!";;
 	esac
+	if [ $success -eq 0 ]; then
+		success=1
+	else
+		success=0
+	fi
 }
 
 
