@@ -567,7 +567,8 @@ function funcMove {
 function funcRemove {
 	case $status in
 	3)	# Cut		-> remove decoded file
-		funcRemoveFile "$pathTmpAbsCut"
+		funcRemoveFile "$pathTmpAbsCut"				# temporary cut file (should not exist anymore)
+		funcRemoveFile "$pathTmpAbsDecoded"			# temporary decoded file
 		funcRemoveFile "$pathAbsOutDecoded"			# decoded file in output dir
 		funcRemoveFile "$pathAbsOutDecodedInsane"	#  "
 		;&
