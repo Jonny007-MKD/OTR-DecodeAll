@@ -9,7 +9,8 @@ Configuration
 
 The config file provides a default configuration. Some parts can be overridden by command line parameters, other variables shall use those parameters. Thus the config file is divided in two parts (functions): funcConfigPre and funcConfigPost.
 In funcConfigPre the following values have to be set:
-    user="OTR-User"
+
+    user="OTR-Email"
     pass="OTR-Password"
   
     delugeDir="/etc/deluged"                # Config dir of DelugeD
@@ -30,7 +31,8 @@ In funcConfigPre the following values have to be set:
     logLevel=2                              # level, which messages shall be written into the log.
     echoLevel=5                             # level, which messages shall be written to stdout.
 
-In funcConfigPost you can use the above variables. Their content may be modified by command line parameters.
+In funcConfigPost you can use the variables from above. Their content may be modified by command line parameters.
+
     cmdDecode="/usr/bin/otrtool"                      # path to otrkey decoder
     cmdDecodeArgs="-x -e $user -p $pass -D $uncutDir" # for peropeters otrdecoder
 
