@@ -596,7 +596,7 @@ function funcRemove {
 function funcRemoveFile
 {
 	local file="$1"
-	if [ -e $file ]; then
+	if [ -n "$file" -a -e "$file" ]; then
 		funcLog 4 "Deleting $file"
 		rm -f "$file";
 	fi
