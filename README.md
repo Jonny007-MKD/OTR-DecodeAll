@@ -9,6 +9,7 @@ Configuration
 
 The config file provides a default configuration. Some parts can be overridden by command line parameters, other variables shall use those parameters. Thus the config file is divided in two parts (functions): funcConfigPre and funcConfigPost.
 In funcConfigPre the following values have to be set:
+
     user="OTR-User"
     pass="OTR-Password"
   
