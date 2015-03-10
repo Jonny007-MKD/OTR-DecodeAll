@@ -508,7 +508,12 @@ function funcCut {
 	success=$?
 	case $success in
 		0)
-			funcLog 4 "Successfully cut";;
+			if [ ! -f "$pathTmpAbsCut" ]; then
+				success=1
+				funcLog 1 "multicutmkv: Returned success, but output file is missing!"
+			else
+				funcLog 4 "Successfully cut"
+			fi;;
 		1)
 			funcLog 1 "multicutmkv: General error!";;
 		2)
