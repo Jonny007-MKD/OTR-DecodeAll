@@ -19,7 +19,7 @@ In funcConfigPre the following values have to be set:
     cutDir="/Multimedia/Video/.Uncut"       # Dir with cut videos (output of cutter)
     outDir="/Multimedia/Video/"             # Final dir with videos
   
-    torrentDb="/home/deluged/torrents.db"   # File with file names and labels (see at github: OTR-TorrentDb)
+    torrentDb="/home/deluged/torrents.db"   # File with file names and labels (see at github: Torrent-Label-DB)
     # Possible labels: docu, tvserie, movie, movie-en
     # With these labels the videos will be sorted in subfolders of $outDir
   
