@@ -251,11 +251,11 @@ function funcUnlock {
 }
 
 function funcGetLabel {
-	if [ -n "$torrentDb" -a -r "$torrentDb" ]; then
-		label="$(LC_ALL=C fgrep -m 1 "$filename" $torrentDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+	if [ -n "$labelDb" -a -r "$labelDb" ]; then
+		label="$(LC_ALL=C fgrep -m 1 "$filename" $labelDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
 		funcLog 5 "label: $label"
 	else
-		funcLog 5 "no/incorrect torrentDb given"
+		funcLog 5 "no/incorrect labelDb given"
 		label="N\\A"
 	fi
 }
@@ -371,7 +371,7 @@ function funcProcessFiles {
 			funcLog 4 "Label did not match filter. Skipping";
 			continue;
 		fi
-		if [ -z "$label" -a "$label" != "N\\A" ]; then						# Empty label and torrentDb does exist --> skip
+		if [ -z "$label" -a "$label" != "N\\A" ]; then						# Empty label and labelDb does exist --> skip
 			funcLog 1 "No label specified for this movie. Skipping"
 			continue;
 		fi

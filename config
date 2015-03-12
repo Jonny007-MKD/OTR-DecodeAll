@@ -18,7 +18,7 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	logLevel=2														# level, which messages shall be written into the log.
 	echoLevel=5														# level, which messages shall be written to stdout.
 
-	torrentDb="/home/deluged/torrents.db"							# File with file names and labels (see at github: OTR-TorrentDb) (optional)
+	labelDb="/home/deluged/labeldb/labelsOfTorrents.db"				# File with file names and labels (see at github: Torrent-Label-DB) (optional)
 	# Add label to directory mapping. (optional)
 	#   1st arg: Label
 	#   2nd arg: Each movie with this label will be moved to this subdirectory of $outDir
@@ -48,7 +48,7 @@ function funcConfigPost {
 
 
 	cmdCut="/home/deluged/multicutmkv.sh"							# path to multicut
-	cmdCutArgs="-o $tempDir -t $tempDir"
+	cmdCutArgs="-q -o $tempDir -t $tempDir"
 
 
 
