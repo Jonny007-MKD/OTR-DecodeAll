@@ -108,12 +108,17 @@ function addLabel {
 
 function funcGetConfig {
 	if [ ! -r "$PwD/config" ]; then
-		funcLog 1 "$PwD/config does not exist"
-		exit 1
+		if [ ! -r "$PwD/config.sample" ]; then
+			funcLog 1 "$PwD/config does not exist!"
+			exit 1
+		else
+			funcLog 2 "You should use $PwD/config insted of config.sample!"
+			. "$PwD/config.sample"
+		fi
 	else
 		. "$PwD/config"
-		funcConfigPre
 	fi
+	funcConfigPre
 }
 
 function funcPerformChecks {
