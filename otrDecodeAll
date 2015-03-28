@@ -372,12 +372,12 @@ function funcProcessFiles {
 		funcGetLabel														# Read the label from the database
 
 
-		if [ -n "$labelFilter" ] && [ "$labelFilter" != "$label" ]; then	# This label shall not be handled --> skip
-			funcLog 4 "Label did not match filter. Skipping";
-			continue;
-		fi
 		if [ -z "$label" -a "$label" != "N\\A" ]; then						# Empty label and labelDb does exist --> skip
 			funcLog 1 "No label specified for this movie. Skipping"
+			continue;
+		fi
+		if [ -n "$labelFilter" ] && [ "$labelFilter" != "$label" ]; then	# This label shall not be handled --> skip
+			funcLog 4 "Label did not match filter. Skipping";
 			continue;
 		fi
 
