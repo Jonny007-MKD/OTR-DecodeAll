@@ -440,6 +440,25 @@ function funcProcessFiles {
 			if (( success == 1 )); then										# Cutting did not fail
 				status=3;
 				alrMoved=0;													# Our new file is in tempDir
+			else															# Cutting did fail
+				local sizeEnc
+				local sizeDec
+				sizeEnc=`stat -L -c%s "$pathAbsEncoded"`
+				sizeDec=`stat -L -c%s "$pathTmpAbsDecoded"`
+				if [ $(($sizeEnc-$sizeDec)) -ne 522 ]; then					# If decoded file is different to encoded file
+					funcLog 5 "Cutting failed. But the encoded file ($sizeEnc) is not the source of the decoded file ($sizeDec)."
+					funcLog 5 "Searching cutlists for encoded file"
+					funcLog 5 "$cmdCut -find-cl 522 \"$pathAbsEncoded\""
+					$cmdCut -find-cl 522 "$pathAbsEncoded"
+					if [ $? -eq 0 ]; then									# The (new) encoded file can be cut
+						funcLog 3 "The new otrkey file can be cut. We will try it."
+						## What shall we do now?
+						funcRemoveFile "$pathTmpAbsDecoded"
+						# Next time the file will be decoded and cut. This is not the best way...
+					else
+						funcLog 5 "No cutlist found"
+					fi
+				fi
 			fi
 		fi
 
