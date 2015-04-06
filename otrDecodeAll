@@ -23,6 +23,12 @@ declare -A label2SaneRename
 PwD=$(readlink -e $0)	# Get the path to this script
 PwD=$(dirname "$PwD")
 
+
+
+####################
+# Helper functions #
+####################
+
 # trap ctrl-c and call ctrl_c()
 trap ctrl_c INT
 
@@ -31,6 +37,7 @@ function ctrl_c() {
 	exit
 }
 
+# Log message to stdout and log file
 function funcLog {
 	if [ $1 -eq 0 ]; then										# this is a "Processing ..." message and will be stored until an event is logged
 		lastProcessingLog="`date +"%d.%m.%y %T"` ${logMsgTypes[0]}\t$2"			# store message
@@ -64,6 +71,30 @@ function funcLog {
 	fi
 }
 
+# Look for lock file and exit if it is existing and $forceRun == 0
+function funcLock {
+	if [ -f /tmp/.otrDecodeAll.lock -a "$forceRun" != "1" ]; then
+		funcLog 1 "/tmp/.otrDecodeAll.lock existing! exiting..."
+		exit 1
+	else
+		funcLog 4 "Creating lock file /tmp/.otrDecodeAll.lock"
+		touch /tmp/.otrDecodeAll.lock
+	fi
+}
+
+# Delete lock file
+function funcUnlock {
+	funcLog 4 "Removing lock file /tmp/.otrDecodeAll.lock"
+	rm -f /tmp/.otrDecodeAll.lock
+}
+
+
+
+###############
+# Config file #
+###############
+
+# Add label to dictionary
 function addLabel {
 	success=1;
 	case $# in
@@ -106,6 +137,7 @@ function addLabel {
 	fi
 }
 
+# Read config file
 function funcGetConfig {
 	if [ ! -r "$PwD/config" ]; then
 		if [ ! -r "$PwD/config.sample" ]; then
@@ -113,14 +145,21 @@ function funcGetConfig {
 			exit 1
 		else
 			funcLog 2 "You should use $PwD/config insted of config.sample!"
-			. "$PwD/config.sample"
+			source "$PwD/config.sample"
 		fi
 	else
-		. "$PwD/config"
+		source "$PwD/config"
 	fi
 	funcConfigPre
 }
 
+
+
+##########
+# Checks #
+##########
+
+# Check for installed tools
 function funcPerformChecks {
 	local exet;
 	exet=0
@@ -149,6 +188,7 @@ function funcPerformChecks {
 	funcPerformKodiCheck
 }
 
+# Check whether Kodi is playing something
 function funcPerformKodiCheck {
 	local curTimestamp;
 	if (( forceRun == 0 )) && [ -n "$kodiUrl" ]; then			# If we can and have to check whether Kodi is playing something
@@ -166,6 +206,7 @@ function funcPerformKodiCheck {
 	fi
 }
 
+# Request Kodi to update its Video library
 function funcUpdateKodi {
 	if [ -n "$kodiUrl" ]; then
 		if (( scanKodi == 1 )); then
@@ -188,7 +229,12 @@ function funcUpdateKodi {
 }
 
 
-# Parse the parameters
+
+################
+# Command line #
+################
+
+# Parse parameters from command line
 function funcParam {
 	while getopts "frkvh?e:p:i:o:t:l:" optval; do
 		case $optval in
@@ -259,122 +305,13 @@ function funcHelp {
 	echo -e "	\033[36m-h\033[37m Show this help."
 }
 
-# Look for lock file and exit if it is existing and $forceRun == 0
-function funcLock {
-	if [ -f /tmp/.otrDecodeAll.lock -a "$forceRun" != "1" ]; then
-		funcLog 1 "/tmp/.otrDecodeAll.lock existing! exiting..."
-		exit 1
-	else
-		funcLog 4 "Creating lock file /tmp/.otrDecodeAll.lock"
-		touch /tmp/.otrDecodeAll.lock
-	fi
-}
-
-# Delete lock file
-function funcUnlock {
-	funcLog 4 "Removing lock file /tmp/.otrDecodeAll.lock"
-	rm -f /tmp/.otrDecodeAll.lock
-}
-
-function funcGetLabel {
-	if [ -n "$labelDb" -a -r "$labelDb" ]; then
-		label="$(LC_ALL=C fgrep -m 1 "$filename" $labelDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
-		funcLog 5 "label: $label"
-	else
-		funcLog 5 "no/incorrect labelDb given"
-		label="N\\A"
-	fi
-}
-
-function funcMakeVars {
-	# This contains the OTR name of the file (e.g. Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
-	funcLog 5 "filename: $filename"
-
-	# This will be our name for the subfolder (movie name, e.g. Good.Wife)
-	bibname=${filename%%_[0-9][0-9].*}
-	bibname="${bibname//_/.}"
-	funcLog 5 "bibname: $bibname"
 
 
-	# This is the absolute path to the encoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi.otrkey)
-	pathAbsEncoded="$inDir/$filename.otrkey"
-	funcLog 5 "pathAbsEncoded: $pathAbsEncoded"
+##################
+# File Functions #
+##################
 
-	# This is the absolute path to the decoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
-	pathTmpAbsDecoded="$tempDir/$filename"
-	funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
-
-	# This is the absolute path to the cut file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi-cut.mkv)
-	pathTmpAbsCut="$tempDir/$filename$cutAppendix"
-	funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
-
-	# Now we will determine the path where to put the file in the end (depends on label and saneRenamix)
-	# sanename is normally the filename. In case of tv series the sanename will also contain the series and episode number and title
-
-	sanename=$filename		# Default value (in case of error)
-	if [ ${#label2Dir[@]} -gt 0 -a "$label" != "N\\A" ]; then				# if we want to use labels
-		if [ -z "$label" ]; then													# don't allow empty labels
-			pathAbsOutDecoded=""
-		else
-			pathAbsOutDecoded="${label2Dir["$label"]}"								# get relative output directory for this label
-			if [ -z "$pathAbsOutDecoded" ]; then
-				funcLog 2 "Unrecognized label: $label"
-				label=""
-				pathAbsOutDecoded=""
-			elif [ ${label2SaneRename["$label"]} -eq 1 ]; then						# call SaneRenamix if indicated
-				tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
-				local err=$?
-				case $err in		# return value conversion
-				0)
-					bibname="${tmp%%..*}"
-					sanename="$tmp"
-					funcLog 5 "sanename: $sanename";;
-				1)
-					funcLog 1 "SaneRenamix: General error!";;
-				2)
-					funcLog 1 "SaneRenamix: Specified language not recognized";;
-				3)
-					funcLog 3 "SaneRenamix: Aborted (Ctrl+C)";;
-				10)
-					funcLog 2 "SaneRenamix: Series not found in TvDB";;
-				11)
-					funcLog 2 "SaneRenamix: Series not found in EPG";;
-				20)
-					funcLog 2 "SaneRenamix: No info for this episode found";;
-				21)
-					funcLog 2 "SaneRenamix: No episode title found in EPG";;
-				40)
-					funcLog 1 "SaneRenamix: Downloading EPG data failed";;
-				41)
-					funcLog 1 "SaneRenamix: Downloading list of episodes from TvDB failed";;
-				*)
-					funcLog 1 "SaneRenamix: Unknown error $err";;
-				esac
-			fi
-		fi
-	fi																			# if we do not want to use labels
-
-	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
-
-	# Save the insane filename in case saneRenamix did not work once before
-	if [ $sanename != $filename ]; then	# No sanename
-		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$filename"
-		funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
-
-		pathAbsOutCutInsane="$pathAbsOutDecodedInsane$cutAppendix"
-		funcLog 5 "pathAbsOutCutInsane: $pathAbsOutCutInsane"
-	fi
-
-	# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
-	pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
-	funcLog 5 "pathAbsOutDecoded: $pathAbsOutDecoded"
-
-	# This will be the absolute path to the cut output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi-cut.mkv)
-	pathAbsOutCut="$pathAbsOutDecoded$cutAppendix"
-	funcLog 5 "pathAbsOutCut: $pathAbsOutCut"
-}
-
-# In here lives the main loop
+# In here lives the main loop which processes all otrkeys
 function funcProcessFiles {
 	local nextStep
 	local status		# 0 undef; 1 encoded; 2 decoded; 3 cut;
@@ -508,8 +445,107 @@ function funcProcessFiles {
 	done
 }
 
+# Retreive the label for the current file
+function funcGetLabel {
+	if [ -n "$labelDb" -a -r "$labelDb" ]; then
+		label="$(LC_ALL=C fgrep -m 1 "$filename" $labelDb | grep -o ' [a-zA-Z0-9_-]*$' | grep -o '[a-zA-Z0-9_-]*$')"
+		funcLog 5 "label: $label"
+	else
+		funcLog 5 "no/incorrect labelDb given"
+		label="N\\A"
+	fi
+}
 
-# Do the decoding stuff
+# Set all variables for the current file
+function funcMakeVars {
+	# This contains the OTR name of the file (e.g. Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
+	funcLog 5 "filename: $filename"
+
+	# This will be our name for the subfolder (movie name, e.g. Good.Wife)
+	bibname=${filename%%_[0-9][0-9].*}
+	bibname="${bibname//_/.}"
+	funcLog 5 "bibname: $bibname"
+
+
+	# This is the absolute path to the encoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi.otrkey)
+	pathAbsEncoded="$inDir/$filename.otrkey"
+	funcLog 5 "pathAbsEncoded: $pathAbsEncoded"
+
+	# This is the absolute path to the decoded file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
+	pathTmpAbsDecoded="$tempDir/$filename"
+	funcLog 5 "pathTmpAbsDecoded: $pathTmpAbsDecoded"
+
+	# This is the absolute path to the cut file (e.g. /stuff/Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi-cut.mkv)
+	pathTmpAbsCut="$tempDir/$filename$cutAppendix"
+	funcLog 5 "pathTmpAbsCut: $pathTmpAbsCut"
+
+	# Now we will determine the path where to put the file in the end (depends on label and saneRenamix)
+	# sanename is normally the filename. In case of tv series the sanename will also contain the series and episode number and title
+
+	sanename=$filename		# Default value (in case of error)
+	if [ ${#label2Dir[@]} -gt 0 -a "$label" != "N\\A" ]; then				# if we want to use labels
+		if [ -z "$label" ]; then													# don't allow empty labels
+			pathAbsOutDecoded=""
+		else
+			pathAbsOutDecoded="${label2Dir["$label"]}"								# get relative output directory for this label
+			if [ -z "$pathAbsOutDecoded" ]; then
+				funcLog 2 "Unrecognized label: $label"
+				label=""
+				pathAbsOutDecoded=""
+			elif [ ${label2SaneRename["$label"]} -eq 1 ]; then						# call SaneRenamix if indicated
+				tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
+				local err=$?
+				case $err in		# return value conversion
+				0)
+					bibname="${tmp%%..*}"
+					sanename="$tmp"
+					funcLog 5 "sanename: $sanename";;
+				1)
+					funcLog 1 "SaneRenamix: General error!";;
+				2)
+					funcLog 1 "SaneRenamix: Specified language not recognized";;
+				3)
+					funcLog 3 "SaneRenamix: Aborted (Ctrl+C)";;
+				10)
+					funcLog 2 "SaneRenamix: Series not found in TvDB";;
+				11)
+					funcLog 2 "SaneRenamix: Series not found in EPG";;
+				20)
+					funcLog 2 "SaneRenamix: No info for this episode found";;
+				21)
+					funcLog 2 "SaneRenamix: No episode title found in EPG";;
+				40)
+					funcLog 1 "SaneRenamix: Downloading EPG data failed";;
+				41)
+					funcLog 1 "SaneRenamix: Downloading list of episodes from TvDB failed";;
+				*)
+					funcLog 1 "SaneRenamix: Unknown error $err";;
+				esac
+			fi
+		fi
+	fi																			# if we do not want to use labels
+
+	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
+
+	# Save the insane filename in case saneRenamix did not work once before
+	if [ $sanename != $filename ]; then	# No sanename
+		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$filename"
+		funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
+
+		pathAbsOutCutInsane="$pathAbsOutDecodedInsane$cutAppendix"
+		funcLog 5 "pathAbsOutCutInsane: $pathAbsOutCutInsane"
+	fi
+
+	# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
+	pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
+	funcLog 5 "pathAbsOutDecoded: $pathAbsOutDecoded"
+
+	# This will be the absolute path to the cut output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi-cut.mkv)
+	pathAbsOutCut="$pathAbsOutDecoded$cutAppendix"
+	funcLog 5 "pathAbsOutCut: $pathAbsOutCut"
+}
+
+# Do the decoding stuff: Call decoder
 function funcDecode {
 	local sizeEnc;
 	local sizeDec;
@@ -548,7 +584,7 @@ function funcDecode {
 	fi
 }
 
-# Cut our decoded file
+# Cut the decoded file
 function funcCut {
 	funcLog 4 "Cutting $pathTmpAbsDecoded"
 	funcLog 5 "     $cmdCut $cmdCutArgs $pathTmpAbsDecoded"
@@ -599,7 +635,7 @@ function funcCut {
 	fi
 }
 
-
+# Move the decoded/cut file to its destination
 function funcMove {
 	if [ "$pathMoveFrom" != "$pathMoveTo" ]; then
 		if [ -f "$pathMoveFrom" ]; then
@@ -649,6 +685,7 @@ function funcRemove {
 	success=1;
 }
 
+# Remove the specified file if it exists
 function funcRemoveFile
 {
 	local file="$1"
