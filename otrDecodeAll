@@ -29,12 +29,25 @@ PwD=$(dirname "$PwD")
 # Helper functions #
 ####################
 
-# trap ctrl-c and call ctrl_c()
-trap ctrl_c INT
+# trap signals and handle them
+trap t_sigint  SIGINT		# Ctrl+C
+trap t_sighup  SIGHUP		# Hangup on Terminal
+trap t_sigcont SIGCONT		# Continue after stop
 
-function ctrl_c() {
+function t_sigint {
 	funcUnlock
-	exit
+	exit 2
+}
+
+function t_sighup {
+	# Do nothing
+	sleep 0
+}
+
+function t_sigcont {
+	if [ -n "$lastProcessingEcho" ]; then
+		echo -e "$lastProcessingEcho"
+	fi
 }
 
 # Log message to stdout and log file
