@@ -166,6 +166,27 @@ function funcPerformKodiCheck {
 	fi
 }
 
+function funcUpdateKodi {
+	if [ -n "$kodiUrl" ]; then
+		if (( scanKodi == 1 )); then
+			scanOK="$(curl -s $kodiUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "VideoLibrary.Scan", "id": 1}' | egrep -o "\"[^\"]*\"}" | egrep -o [A-Za-z0-9]+)"
+			if [ "$scanOK" != "OK" ]; then
+				funcLog 2 "Kodi did not return OK on command VideoLibrary.Scan"
+			else
+				funcLog 5 "Kodi returned OK on command VideoLibrary.Scan"
+			fi
+		fi
+		if (( cleanKodi == 1 )); then
+			cleanOK="$(curl -s $kodiUrl/jsonrpc -H 'content-type: application/json;' --data-binary '{"jsonrpc": "2.0", "method": "VideoLibrary.Clean", "id": 1}' | egrep -o "\"[^\"]*\"}" | egrep -o [A-Za-z0-9]+)"
+			if [ "$cleanOK" != "OK" ]; then
+				funcLog 2 "Kodi did not return OK on command VideoLibrary.Clean"
+			else
+				funcLog 5 "Kodi returned OK on command VideoLibrary.Clean"
+			fi
+		fi
+	fi
+}
+
 
 # Parse the parameters
 function funcParam {
@@ -289,7 +310,7 @@ function funcMakeVars {
 
 	# Now we will determine the path where to put the file in the end (depends on label and saneRenamix)
 	# sanename is normally the filename. In case of tv series the sanename will also contain the series and episode number and title
-	## TODO: Introduce some dictionary in the config and make this more general
+
 	sanename=$filename		# Default value (in case of error)
 	if [ ${#label2Dir[@]} -gt 0 -a "$label" != "N\\A" ]; then				# if we want to use labels
 		if [ -z "$label" ]; then													# don't allow empty labels
@@ -397,6 +418,8 @@ function funcProcessFiles {
 			mv $pathAbsOutCutInsane $pathAbsOutCut
 			status=3;
 			alrMoved=1;
+			scanKodi=1;
+			cleanKodi=1;
 		elif [ -f "$pathAbsOutCut" ]; then									# The final output file already exists
 			funcLog 4 "File was already decoded and cut."
 			status=3;
@@ -408,6 +431,8 @@ function funcProcessFiles {
 			if [ -n "$pathAbsOutDecodedInsane" -a -f "$pathAbsOutDecodedInsane" ]; then	# Sanerenamix could not name this file before, but now it cans
 				funcLog 4 "Renamed decoded $filename to $sanename"			# We were unable to cut the last time
 				mv $pathAbsOutDecodedInsane $pathAbsOutDecoded
+				scanKodi=1;
+				cleanKodi=1;
 				status=2;
 			elif [ -f "$pathAbsOutDecoded" ]; then
 				funcLog 4 "File was already decoded."
@@ -586,6 +611,7 @@ function funcMove {
 
 			mv -f "$pathMoveFrom" "$pathMoveTo"
 			success=1;
+			scanKodi=1;
 		else
 			success=0;
 		fi
@@ -634,12 +660,15 @@ function funcRemoveFile
 
 
 
-######
-# This is our main program flow
-######
+#################################
+# This is our main program flow #
+#################################
+
 funcGetConfig
 funcParam "$@"
 funcPerformChecks
 funcLock
 funcProcessFiles
+funcUpdateKodi
 funcUnlock
+
