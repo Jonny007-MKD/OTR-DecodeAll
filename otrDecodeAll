@@ -40,7 +40,7 @@ function t_sigint {
 }
 
 function t_sighup {
-	# Do nothing
+	# Do nothing, simply continue
 	sleep 0
 }
 
@@ -476,6 +476,7 @@ function funcMakeVars {
 
 	# This will be our name for the subfolder (movie name, e.g. Good.Wife)
 	bibname=${filename%%_[0-9][0-9].*}
+	bibname="${bibname%%_S[0-9][0-9]E[0-9][0-9]}"
 	bibname="${bibname//_/.}"
 	funcLog 5 "bibname: $bibname"
 
@@ -538,16 +539,20 @@ function funcMakeVars {
 		fi
 	fi																			# if we do not want to use labels
 
-	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
 
 	# Save the insane filename in case saneRenamix did not work once before
 	if [ $sanename != $filename ]; then	# No sanename
-		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$filename"
+		bibnameInsane=${filename%%_[0-9][0-9].*}
+		bibnameInsane="${bibnameInsane%%_S[0-9][0-9]E[0-9][0-9]}"
+	    bibnameInsane="${bibnameInsane//_/.}"
+		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$bibnameInsane/$filename"
 		funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
 
 		pathAbsOutCutInsane="$pathAbsOutDecodedInsane$cutAppendix"
 		funcLog 5 "pathAbsOutCutInsane: $pathAbsOutCutInsane"
 	fi
+
+	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
 
 	# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
 	pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
