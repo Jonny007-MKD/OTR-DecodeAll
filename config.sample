@@ -19,6 +19,7 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	echoLevel=5														# level, which messages shall be written to stdout.
 
 	labelDb="/home/deluged/labeldb/labelsOfTorrents.db"				# File with file names and labels (see at github: Torrent-Label-DB) (optional)
+	warnUnknownLabel=false											# Print a warning for files with an unknown label?
 	# Add label to directory mapping. (optional)
 	#   1st arg: Label
 	#   2nd arg: Each movie with this label will be moved to this subdirectory of $outDir

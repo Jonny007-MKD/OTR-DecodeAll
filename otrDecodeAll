@@ -16,6 +16,7 @@ cutAppendix="-cut.mkv"
 lastProcessingLogPrinted=0
 lastProcessingEchoed=0
 lastProcessingEchoedNL=0
+warnUnknownLabel=true
 declare -A label2Dir
 declare -A label2SaneRename
 
@@ -355,6 +356,9 @@ function funcProcessFiles {
 		status=0;
 		alrMoved=0;
 		funcMakeVars														# Make all path variables
+		if [ -z "$label" ]; then
+			continue;
+		fi
 		if (( lastProcessingEchoedNL == 0 )); then
 			echo			# create a newline to separate output
 			lastProcessingEchoedNL=1
@@ -471,6 +475,9 @@ function funcGetLabel {
 
 # Set all variables for the current file
 function funcMakeVars {
+	local error;
+	error=false;
+
 	# This contains the OTR name of the file (e.g. Good_Wife_15.02.17_23-55_sixx_50_TVOON_DE.mpg.HQ.avi)
 	funcLog 5 "filename: $filename"
 
@@ -499,20 +506,23 @@ function funcMakeVars {
 	sanename=$filename		# Default value (in case of error)
 	if [ ${#label2Dir[@]} -gt 0 -a "$label" != "N\\A" ]; then				# if we want to use labels
 		if [ -z "$label" ]; then													# don't allow empty labels
-			pathAbsOutDecoded=""
+			error=true;
 		else
 			pathAbsOutDecoded="${label2Dir["$label"]}"								# get relative output directory for this label
 			if [ -z "$pathAbsOutDecoded" ]; then
-				funcLog 2 "Unrecognized label: $label"
-				label=""
-				pathAbsOutDecoded=""
+				if $warnUnknownLabel; then
+					funcLog 2 "Unknown label: $label"
+				fi
+				error=true;
 			elif [ ${label2SaneRename["$label"]} -eq 1 ]; then						# call SaneRenamix if indicated
 				tmp="$($cmdSaneRenamix $cmdSaneRenamixArgs $filename)"
 				local err=$?
+				error=true;
 				case $err in		# return value conversion
 				0)
 					bibname="${tmp%%..*}"
 					sanename="$tmp"
+					error=false;
 					funcLog 5 "sanename: $sanename";;
 				1)
 					funcLog 1 "SaneRenamix: General error!";;
@@ -539,28 +549,31 @@ function funcMakeVars {
 		fi
 	fi																			# if we do not want to use labels
 
+	if $error; then
+		label="";
+	else
+		# Save the insane filename in case saneRenamix did not work once before
+		if [ $sanename != $filename ]; then	# No sanename
+			bibnameInsane=${filename%%_[0-9][0-9].*}
+			bibnameInsane="${bibnameInsane%%_S[0-9][0-9]E[0-9][0-9]}"
+		    bibnameInsane="${bibnameInsane//_/.}"
+			pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$bibnameInsane/$filename"
+			funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
 
-	# Save the insane filename in case saneRenamix did not work once before
-	if [ $sanename != $filename ]; then	# No sanename
-		bibnameInsane=${filename%%_[0-9][0-9].*}
-		bibnameInsane="${bibnameInsane%%_S[0-9][0-9]E[0-9][0-9]}"
-	    bibnameInsane="${bibnameInsane//_/.}"
-		pathAbsOutDecodedInsane="$outDir/$pathAbsOutDecoded/$bibnameInsane/$filename"
-		funcLog 5 "pathAbsOutDecodedInsane: $pathAbsOutDecodedInsane"
+			pathAbsOutCutInsane="$pathAbsOutDecodedInsane$cutAppendix"
+			funcLog 5 "pathAbsOutCutInsane: $pathAbsOutCutInsane"
+		fi
 
-		pathAbsOutCutInsane="$pathAbsOutDecodedInsane$cutAppendix"
-		funcLog 5 "pathAbsOutCutInsane: $pathAbsOutCutInsane"
+		pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
+
+		# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
+		pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
+		funcLog 5 "pathAbsOutDecoded: $pathAbsOutDecoded"
+
+		# This will be the absolute path to the cut output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi-cut.mkv)
+		pathAbsOutCut="$pathAbsOutDecoded$cutAppendix"
+		funcLog 5 "pathAbsOutCut: $pathAbsOutCut"
 	fi
-
-	pathAbsOutDecoded="$pathAbsOutDecoded/$bibname"		# Append bibname: This is the series name or the movie name (Kodi likes this)
-
-	# This will be the absolute path to the output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi)
-	pathAbsOutDecoded="$outDir/$pathAbsOutDecoded/$sanename"
-	funcLog 5 "pathAbsOutDecoded: $pathAbsOutDecoded"
-
-	# This will be the absolute path to the cut output file (e.g. /final/Good.Wife/Good.Wife..S05E14..Ein.paar.Worte.HQ.avi-cut.mkv)
-	pathAbsOutCut="$pathAbsOutDecoded$cutAppendix"
-	funcLog 5 "pathAbsOutCut: $pathAbsOutCut"
 }
 
 # Do the decoding stuff: Call decoder
