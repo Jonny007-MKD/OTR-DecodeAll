@@ -24,10 +24,11 @@ function funcConfigPre {	# These values are set at the beginning of the script
 	#   1st arg: Label
 	#   2nd arg: Each movie with this label will be moved to this subdirectory of $outDir
 	#   3rd arg: (optional) Whether SaneRenamix shall be used for movies with this label (default: false)
-	addLabel "movie"	"Filme"				0
-	addLabel "movie-en" "Filme-En"			"false"
+	#   4th arg: (optional) Whether the name of the movie/series shall be used as parent directory (default: true)
+	addLabel "movie"	"Filme"				0		0
+	addLabel "movie-en" "Filme-En"			"false"	"false"
 	addLabel "docu"		"Dokumentationen"
-	addLabel "tvserie"	"Serien"			true
+	addLabel "tvserie"	"Serien"			true	true
 
 	umask 0002														# Set permissions 775/664 per default
 }
